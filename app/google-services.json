@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "964304974711",
+    "project_id": "fir-satoria-pharma",
+    "storage_bucket": "fir-satoria-pharma.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:964304974711:android:a002f57012325d34796772",
+        "android_client_info": {
+          "package_name": "com.satoria.audit6s"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBsOfjMgdKK5LALXpxijQ14OT0hmsa9veM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:964304974711:android:4f970a6151ddfbbd796772",
+        "android_client_info": {
+          "package_name": "com.satoria.mentoring6s"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBsOfjMgdKK5LALXpxijQ14OT0hmsa9veM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

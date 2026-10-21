@@ -1,0 +1,6 @@
+{
+  "name": "Seiri 6S",
+  "description": "Aplikasi Seiri Mentoring 6S untuk pemilahan dan validasi objek di area kerja manufaktur",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
