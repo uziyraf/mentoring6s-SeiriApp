@@ -1,17 +1,14 @@
-package com.example.data
+﻿package com.example.data
 
 import android.util.Log
+import com.example.data.mapper.FirestoreMapper
+import com.example.data.utils.DateUtils
 import com.example.model.*
-import com.google.firebase.Timestamp
-import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import java.util.UUID
 
 class SeiriRepository private constructor() {
@@ -45,47 +42,6 @@ class SeiriRepository private constructor() {
     private val _areas = MutableStateFlow<List<Area>>(SampleData.initialAreas)
     val areas: StateFlow<List<Area>> = _areas.asStateFlow()
 
-    private fun safeString(doc: DocumentSnapshot, vararg fields: String): String? {
-        for (f in fields) {
-            if (doc.contains(f)) {
-                val v = doc.get(f) ?: continue
-                if (v is Timestamp) {
-                    return dateFormat.format(v.toDate())
-                }
-                val s = v.toString().trim()
-                if (s.isNotEmpty()) return s
-            }
-        }
-        return null
-    }
-
-    private fun safeBoolean(doc: DocumentSnapshot, vararg fields: String, default: Boolean = true): Boolean {
-        for (f in fields) {
-            if (doc.contains(f)) {
-                val v = doc.get(f) ?: continue
-                when (v) {
-                    is Boolean -> return v
-                    is String -> return v.equals("true", ignoreCase = true) || v == "1"
-                    is Number -> return v.toInt() == 1
-                }
-            }
-        }
-        return default
-    }
-
-    private fun safeInt(doc: DocumentSnapshot, vararg fields: String, default: Int = 1): Int {
-        for (f in fields) {
-            if (doc.contains(f)) {
-                val v = doc.get(f) ?: continue
-                when (v) {
-                    is Number -> return v.toInt()
-                    is String -> return v.toIntOrNull() ?: default
-                }
-            }
-        }
-        return default
-    }
-
     private val _zones = MutableStateFlow<List<Zone>>(SampleData.initialZones)
     val zones: StateFlow<List<Zone>> = _zones.asStateFlow()
 
@@ -109,12 +65,6 @@ class SeiriRepository private constructor() {
 
     private val _questions = MutableStateFlow<List<SeiriQuestion>>(SampleData.questionBank)
     val questions: StateFlow<List<SeiriQuestion>> = _questions.asStateFlow()
-
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-    private val dateOnlyFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-
-    private fun currentTimestamp(): String = dateFormat.format(Date())
-    private fun currentDate(): String = dateOnlyFormat.format(Date())
 
     init {
         initFirestoreSync()
@@ -259,39 +209,39 @@ class SeiriRepository private constructor() {
             if (snapshot != null && !snapshot.isEmpty) {
                 val list = snapshot.documents.mapNotNull { doc ->
                     try {
-                        val id = safeString(doc, "object_id", "id") ?: doc.id
-                        val code = safeString(doc, "object_code", "objectCode", "object_id", "code") ?: id
-                        val name = safeString(doc, "object_name", "name", "objectName") ?: code
-                        val areaId = safeString(doc, "area_id", "areaId") ?: ""
-                        val zoneId = safeString(doc, "zone_id", "zoneId") ?: ""
-                        val desc = safeString(doc, "description", "desc") ?: ""
-                        val func = safeString(doc, "function", "fungsi") ?: ""
-                        val cat = safeString(doc, "category", "kategori") ?: "Alat Kerja"
-                        val pic = safeString(doc, "pic") ?: ""
+                        val id = FirestoreMapper.safeString(doc, "object_id", "id") ?: doc.id
+                        val code = FirestoreMapper.safeString(doc, "object_code", "objectCode", "object_id", "code") ?: id
+                        val name = FirestoreMapper.safeString(doc, "object_name", "name", "objectName") ?: code
+                        val areaId = FirestoreMapper.safeString(doc, "area_id", "areaId") ?: ""
+                        val zoneId = FirestoreMapper.safeString(doc, "zone_id", "zoneId") ?: ""
+                        val desc = FirestoreMapper.safeString(doc, "description", "desc") ?: ""
+                        val func = FirestoreMapper.safeString(doc, "function", "fungsi") ?: ""
+                        val cat = FirestoreMapper.safeString(doc, "category", "kategori") ?: "Alat Kerja"
+                        val pic = FirestoreMapper.safeString(doc, "pic") ?: ""
 
-                        val condStr = safeString(doc, "condition", "kondisi") ?: "BAIK"
+                        val condStr = FirestoreMapper.safeString(doc, "condition", "kondisi") ?: "BAIK"
                         val cond = ObjectCondition.entries.find {
                             it.name.equals(condStr, true) || it.label.equals(condStr, true)
                         } ?: ObjectCondition.BAIK
 
-                        val freqStr = safeString(doc, "usageFrequency", "usage_frequency", "frekuensi") ?: "DAILY"
+                        val freqStr = FirestoreMapper.safeString(doc, "usageFrequency", "usage_frequency", "frekuensi") ?: "DAILY"
                         val freq = UsageFrequency.entries.find {
                             it.name.equals(freqStr, true) || it.label.equals(freqStr, true)
                         } ?: UsageFrequency.DAILY
 
-                        val statusStr = safeString(doc, "validationStatus", "validation_status", "status") ?: "BELUM_DIVALIDASI"
+                        val statusStr = FirestoreMapper.safeString(doc, "validationStatus", "validation_status", "status") ?: "BELUM_DIVALIDASI"
                         val status = ValidationStatus.entries.find {
                             it.name.equals(statusStr, true) || it.label.equals(statusStr, true)
                         } ?: ValidationStatus.BELUM_DIVALIDASI
 
-                        val isActive = safeBoolean(doc, "isActive", "is_active", default = true)
-                        val lastUsed = safeString(doc, "lastUsedDate", "last_used_date") ?: currentDate()
-                        val createdAt = safeString(doc, "created_at", "createdAt") ?: currentDate()
-                        val updatedAt = safeString(doc, "updated_at", "updatedAt") ?: currentDate()
+                        val isActive = FirestoreMapper.safeBoolean(doc, "isActive", "is_active", default = true)
+                        val lastUsed = FirestoreMapper.safeString(doc, "lastUsedDate", "last_used_date") ?: DateUtils.currentDate()
+                        val createdAt = FirestoreMapper.safeString(doc, "created_at", "createdAt") ?: DateUtils.currentDate()
+                        val updatedAt = FirestoreMapper.safeString(doc, "updated_at", "updatedAt") ?: DateUtils.currentDate()
 
                         SeiriObject(
                             id = id,
-                            sourceObjectId = safeString(doc, "sourceObjectId", "source_object_id"),
+                            sourceObjectId = FirestoreMapper.safeString(doc, "sourceObjectId", "source_object_id"),
                             objectCode = code,
                             areaId = areaId,
                             zoneId = zoneId,
@@ -305,9 +255,9 @@ class SeiriRepository private constructor() {
                             lastUsedDate = lastUsed,
                             validationStatus = status,
                             isActive = isActive,
-                            version = safeInt(doc, "version", default = 1),
-                            createdBy = safeString(doc, "createdBy", "created_by") ?: "System",
-                            updatedBy = safeString(doc, "updatedBy", "updated_by") ?: "System",
+                            version = FirestoreMapper.safeInt(doc, "version", default = 1),
+                            createdBy = FirestoreMapper.safeString(doc, "createdBy", "created_by") ?: "System",
+                            updatedBy = FirestoreMapper.safeString(doc, "updatedBy", "updated_by") ?: "System",
                             createdAt = createdAt,
                             updatedAt = updatedAt
                         )
@@ -379,13 +329,13 @@ class SeiriRepository private constructor() {
             condition = condition,
             pic = pic.trim().ifEmpty { user.name },
             usageFrequency = usageFrequency,
-            lastUsedDate = currentDate(),
+            lastUsedDate = DateUtils.currentDate(),
             validationStatus = ValidationStatus.BELUM_DIVALIDASI,
             isActive = true,
             createdBy = user.name,
             updatedBy = user.name,
-            createdAt = currentDate(),
-            updatedAt = currentDate()
+            createdAt = DateUtils.currentDate(),
+            updatedAt = DateUtils.currentDate()
         )
 
         _objects.value = listOf(newObj) + _objects.value
@@ -461,7 +411,7 @@ class SeiriRepository private constructor() {
             usageFrequency = usageFrequency,
             version = current.version + 1,
             updatedBy = user.name,
-            updatedAt = currentDate()
+            updatedAt = DateUtils.currentDate()
         )
         val newSummary = "Nama: ${updated.name}, Zona: ${getZoneName(updated.zoneId)}, PIC: ${updated.pic}, Frekuensi: ${updated.usageFrequency.label}"
 
@@ -512,7 +462,7 @@ class SeiriRepository private constructor() {
         val updated = current.copy(
             isActive = false,
             updatedBy = user.name,
-            updatedAt = currentDate()
+            updatedAt = DateUtils.currentDate()
         )
         _objects.value = _objects.value.map { if (it.id == id) updated else it }
         try {
@@ -520,7 +470,7 @@ class SeiriRepository private constructor() {
                 mapOf(
                     "isActive" to false,
                     "updatedBy" to user.name,
-                    "updatedAt" to currentDate()
+                    "updatedAt" to DateUtils.currentDate()
                 )
             )
         } catch (e: Exception) {
@@ -552,7 +502,7 @@ class SeiriRepository private constructor() {
         val updated = current.copy(
             isActive = true,
             updatedBy = user.name,
-            updatedAt = currentDate()
+            updatedAt = DateUtils.currentDate()
         )
         _objects.value = _objects.value.map { if (it.id == id) updated else it }
         try {
@@ -560,7 +510,7 @@ class SeiriRepository private constructor() {
                 mapOf(
                     "isActive" to true,
                     "updatedBy" to user.name,
-                    "updatedAt" to currentDate()
+                    "updatedAt" to DateUtils.currentDate()
                 )
             )
         } catch (e: Exception) {
@@ -622,11 +572,11 @@ class SeiriRepository private constructor() {
             groupName = groupName,
             areaId = areaId,
             zoneId = zoneId,
-            sessionDate = sessionDate.ifEmpty { currentDate() },
+            sessionDate = sessionDate.ifEmpty { DateUtils.currentDate() },
             currentStage = 1,
             status = SessionStatus.DRAFT,
             notes = notes,
-            startedAt = currentTimestamp(),
+            startedAt = DateUtils.currentTimestamp(),
             inspections = inspections
         )
         _sessions.value = listOf(session) + _sessions.value
@@ -649,7 +599,7 @@ class SeiriRepository private constructor() {
             groupName = area?.group ?: "PLANT 1",
             areaId = areaId,
             zoneId = zoneId,
-            sessionDate = currentDate(),
+            sessionDate = DateUtils.currentDate(),
             notes = notes
         )
     }
@@ -660,7 +610,7 @@ class SeiriRepository private constructor() {
 
         val updated = session.copy(
             status = SessionStatus.COMPLETED,
-            completedAt = currentTimestamp()
+            completedAt = DateUtils.currentTimestamp()
         )
         _sessions.value = _sessions.value.map { if (it.id == sessionId) updated else it }
         return Result.success(Unit)
@@ -670,7 +620,7 @@ class SeiriRepository private constructor() {
         val user = _currentUser.value
         val completedSession = session.copy(
             status = SessionStatus.COMPLETED,
-            completedAt = currentTimestamp(),
+            completedAt = DateUtils.currentTimestamp(),
             currentStage = 5
         )
         _sessions.value = _sessions.value.map {
@@ -692,7 +642,7 @@ class SeiriRepository private constructor() {
                     pic = insp.pic.ifEmpty { targetObj.pic },
                     validationStatus = valStatus,
                     updatedBy = user.name,
-                    updatedAt = currentDate()
+                    updatedAt = DateUtils.currentDate()
                 )
                 _objects.value = _objects.value.map { if (it.id == targetObj.id) updatedObj else it }
 
@@ -722,7 +672,7 @@ class SeiriRepository private constructor() {
                     objectNameSnapshot = targetObj.name,
                     areaNameSnapshot = getAreaName(targetObj.areaId),
                     createdBy = user.name,
-                    createdAt = currentTimestamp()
+                    createdAt = DateUtils.currentTimestamp()
                 )
                 _validations.value = listOf(valRecord) + _validations.value
 
@@ -737,7 +687,7 @@ class SeiriRepository private constructor() {
                         areaId = targetObj.areaId,
                         actionDescription = insp.actionDescription,
                         assignedTo = insp.pic.ifEmpty { user.name },
-                        dueDate = insp.dueDate.ifEmpty { currentDate() },
+                        dueDate = insp.dueDate.ifEmpty { DateUtils.currentDate() },
                         status = "PENDING"
                     )
                     _actions.value = listOf(act) + _actions.value
@@ -838,7 +788,7 @@ class SeiriRepository private constructor() {
             condition = condition,
             isNecessary = isNecessary,
             usageFrequency = usageFrequency,
-            lastUsedAt = lastUsedAt.ifEmpty { currentDate() },
+            lastUsedAt = lastUsedAt.ifEmpty { DateUtils.currentDate() },
             seiriDecision = seiriDecision,
             decisionReason = decisionReason,
             responsiblePerson = responsiblePerson.ifEmpty { targetObj.pic },
@@ -847,7 +797,7 @@ class SeiriRepository private constructor() {
             objectNameSnapshot = targetObj.name,
             areaNameSnapshot = getAreaName(targetObj.areaId),
             createdBy = user.name,
-            createdAt = currentTimestamp()
+            createdAt = DateUtils.currentTimestamp()
         )
 
         _validations.value = listOf(validation) + _validations.value
@@ -860,7 +810,7 @@ class SeiriRepository private constructor() {
             lastUsedDate = lastUsedAt.ifEmpty { targetObj.lastUsedDate },
             pic = responsiblePerson.ifEmpty { targetObj.pic },
             updatedBy = user.name,
-            updatedAt = currentDate()
+            updatedAt = DateUtils.currentDate()
         )
         _objects.value = _objects.value.map { if (it.id == objectId) updatedObj else it }
 
@@ -875,7 +825,7 @@ class SeiriRepository private constructor() {
                 areaId = targetObj.areaId,
                 actionDescription = followUpAction,
                 assignedTo = responsiblePerson.ifEmpty { user.name },
-                dueDate = currentDate(),
+                dueDate = DateUtils.currentDate(),
                 status = "PENDING"
             )
             _actions.value = listOf(action) + _actions.value
@@ -929,7 +879,7 @@ class SeiriRepository private constructor() {
             requestReason = reason.trim(),
             supportingNotes = supportingNotes.trim(),
             status = TransferStatus.MENUNGGU_PERSETUJUAN,
-            requestedAt = currentTimestamp()
+            requestedAt = DateUtils.currentTimestamp()
         )
 
         _transferRequests.value = listOf(request) + _transferRequests.value
@@ -971,7 +921,7 @@ class SeiriRepository private constructor() {
             reviewedBy = user.id,
             reviewerName = user.name,
             reviewNotes = reviewNotes.trim(),
-            reviewedAt = currentTimestamp()
+            reviewedAt = DateUtils.currentTimestamp()
         )
 
         _transferRequests.value = _transferRequests.value.map {
@@ -988,7 +938,7 @@ class SeiriRepository private constructor() {
                     areaId = request.toAreaId,
                     zoneId = targetZone?.id ?: targetObj.zoneId,
                     updatedBy = user.name,
-                    updatedAt = currentDate()
+                    updatedAt = DateUtils.currentDate()
                 )
                 _objects.value = _objects.value.map { if (it.id == targetObj.id) updatedObj else it }
 
@@ -1157,12 +1107,12 @@ class SeiriRepository private constructor() {
                 condition = ObjectCondition.BAIK,
                 pic = row.rawPic.ifEmpty { "PIC Area" },
                 usageFrequency = UsageFrequency.DAILY,
-                lastUsedDate = currentDate(),
+                lastUsedDate = DateUtils.currentDate(),
                 validationStatus = ValidationStatus.BELUM_DIVALIDASI,
                 createdBy = user.name,
                 updatedBy = user.name,
-                createdAt = currentDate(),
-                updatedAt = currentDate()
+                createdAt = DateUtils.currentDate(),
+                updatedAt = DateUtils.currentDate()
             )
             newObjects.add(obj)
             imported++
@@ -1242,7 +1192,7 @@ class SeiriRepository private constructor() {
             oldValues = oldValues,
             newValues = newValues,
             relatedTransferRequestId = relatedTransferRequestId,
-            changedAt = currentTimestamp()
+            changedAt = DateUtils.currentTimestamp()
         )
         _changeLogs.value = listOf(log) + _changeLogs.value
     }
@@ -1251,3 +1201,4 @@ class SeiriRepository private constructor() {
         val instance: SeiriRepository by lazy { SeiriRepository() }
     }
 }
+

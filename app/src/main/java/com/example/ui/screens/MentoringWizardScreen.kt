@@ -9,7 +9,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -26,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.SeiriRepository
@@ -98,69 +101,90 @@ fun MentoringWizardScreen(
         Surface(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 2.dp,
-            modifier = Modifier.fillMaxWidth()
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp)
         ) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                // --- HEADER LOKASI & JUDUL ---
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Mentoring 6S: Seiri (Pemilahan)",
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
+                        
                         val area = areas.find { it.id == selectedAreaId }
                         val zone = zones.find { it.id == selectedZoneId }
+                        val locationText = "${area?.group ?: "PLANT 1"} • ${area?.areaName ?: "Area"} • ${zone?.zoneName ?: "Pilih Zona"}"
+                        
                         Text(
-                            text = "${area?.group ?: "PLANT 1"} • ${area?.areaName ?: "Area"} • ${zone?.zoneName ?: "Pilih Zona"}",
-                            fontSize = 11.sp,
-                            color = SecondarySlate
-                        )
-                    }
-
-                    Surface(
-                        color = if (activeSession?.status == SessionStatus.COMPLETED) StatusGreenContainer else PrimaryBlueContainer,
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = if (activeSession == null) "Setup Sesi" else "Tahap $currentStage / 5",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (activeSession?.status == SessionStatus.COMPLETED) StatusGreen else PrimaryBlueDark,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            text = locationText,
+                            fontSize = 10.sp,
+                            color = SecondarySlate,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // 5-Stage Stepper Indicators
+                // --- 5-STAGE STEPPER INDICATOR ---
+                val stageTitles = listOf("Objek", "Kebutuhan", "Keputusan", "PIC Tindakan", "Review")
+                
+                // 1. Baris Garis Indikator Progress
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    val stageTitles = listOf("1. Objek", "2. Kebutuhan", "3. Keputusan", "4. PIC Tindakan", "5. Review")
-                    stageTitles.forEachIndexed { idx, title ->
+                    stageTitles.forEachIndexed { idx, _ ->
                         val stepNum = idx + 1
                         val isDone = stepNum < currentStage
                         val isCurrent = stepNum == currentStage
+                        
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(6.dp)
+                                .height(5.dp)
                                 .clip(RoundedCornerShape(3.dp))
                                 .background(
                                     when {
                                         isCurrent -> PrimaryBlue
                                         isDone -> StatusGreen
-                                        else -> OutlineLight.copy(alpha = 0.5f)
+                                        else -> OutlineLight.copy(alpha = 0.4f)
                                     }
                                 )
                         )
                     }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // 2. Teks Tahapan Aktif (Ringkas & Anti-Bertumpuk)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Tahap $currentStage dari 5: ${stageTitles.getOrNull(currentStage - 1) ?: ""}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = PrimaryBlue
+                    )
+                    Text(
+                        text = "${(currentStage * 100) / 5}%",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SecondarySlate
+                    )
                 }
             }
         }
@@ -641,11 +665,11 @@ private fun SessionSetupAndDraftPicker(
         // 1. Search Bar: Cari Nama Area atau Nama/Kode Objek
         item {
             Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(14.dp)) {
+                Column(modifier = Modifier.padding(12.dp)) {
                     Text(
                         text = "Pencarian Cepat Area / Objek",
                         style = MaterialTheme.typography.titleSmall,
@@ -866,7 +890,7 @@ private fun SessionSetupAndDraftPicker(
                     OutlinedTextField(
                         value = sessionNotesInput,
                         onValueChange = onNotesChange,
-                        label = { Text("Catatan / Fokus Mentoring") },
+                        label = { Text("Audiens mentoring") },
                         leadingIcon = { Icon(Icons.Default.Notes, contentDescription = null, tint = SecondarySlate, modifier = Modifier.size(18.dp)) },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -931,76 +955,197 @@ private fun Stage1ObjectIdentification(
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Sticky Header
+        
         Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            shape = RoundedCornerShape(12.dp),
             color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 2.dp,
-            modifier = Modifier.fillMaxWidth()
+            tonalElevation = 0.dp,
+            border = BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+            )
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
+            Column(
+                modifier = Modifier.padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+
+                // Header tahap dan tombol tambah
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
                         Text(
                             text = "Tahap 1 — Identifikasi Objek",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontSize = 14.sp,
+                            lineHeight = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
+
                         Text(
-                            text = "${inspections.size} Objek terdata di ${repository.getZoneName(session.zoneId)}",
+                            text = "${inspections.size} objek terdata",
                             fontSize = 11.sp,
-                            color = SecondarySlate
+                            color = SecondarySlate,
+                            maxLines = 1
                         )
                     }
 
-                    Button(
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Tombol tambah lebih kecil dan proporsional
+                    FilledTonalButton(
                         onClick = onAddNewObject,
+                        modifier = Modifier.height(34.dp),
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                        contentPadding = PaddingValues(
+                            horizontal = 10.dp,
+                            vertical = 0.dp
+                        ),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = PrimaryBlue,
+                            contentColor = Color.White
+                        )
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Tambah objek",
+                            modifier = Modifier.size(15.dp)
+                        )
+
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("+ Objek Baru", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+
+                        Text(
+                            text = "Tambah",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Search Bar in Stage 1 (bisa cari nama area atau objek)
+                // Kolom pencarian
                 AreaOrObjectSearchBar(
                     query = searchQuery,
                     onQueryChange = { searchQuery = it },
-                    placeholder = "Cari nama area atau objek di sesi ini...",
+                    placeholder = "Cari area atau objek...",
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                // Filter status
+                val filters = listOf(
+                    Triple(
+                        "ALL",
+                        "Semua",
+                        inspections.size
+                    ),
+                    Triple(
+                        "UNCHECKED",
+                        "Belum",
+                        inspections.count { !it.isStage2Checked }
+                    ),
+                    Triple(
+                        "CHECKED",
+                        "Sudah",
+                        inspections.count { it.isStage2Checked }
+                    )
+                )
 
-                // Quick Filter Chips
-                Row(
+                LazyRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    FilterChip(
-                        selected = filterMode == "ALL",
-                        onClick = { filterMode = "ALL" },
-                        label = { Text("Semua (${inspections.size})", fontSize = 11.sp) }
-                    )
-                    FilterChip(
-                        selected = filterMode == "UNCHECKED",
-                        onClick = { filterMode = "UNCHECKED" },
-                        label = { Text("Belum Diperiksa (${inspections.count { !it.isStage2Checked }})", fontSize = 11.sp) }
-                    )
-                    FilterChip(
-                        selected = filterMode == "CHECKED",
-                        onClick = { filterMode = "CHECKED" },
-                        label = { Text("Sudah Diperiksa (${inspections.count { it.isStage2Checked }})", fontSize = 11.sp) }
-                    )
+                    items(
+                        items = filters,
+                        key = { it.first }
+                    ) { (key, label, count) ->
+
+                        val selected = filterMode == key
+
+                        Surface(
+                            onClick = { filterMode = key },
+                            shape = RoundedCornerShape(7.dp),
+                            color = if (selected) {
+                                PrimaryBlue
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(
+                                    alpha = 0.65f
+                                )
+                            },
+                            border = if (selected) null else BorderStroke(
+                                0.5.dp,
+                                MaterialTheme.colorScheme.outlineVariant
+                            ),
+                            modifier = Modifier.height(30.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 10.sp,
+                                    fontWeight = if (selected) {
+                                        FontWeight.SemiBold
+                                    } else {
+                                        FontWeight.Medium
+                                    },
+                                    color = if (selected) {
+                                        Color.White
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    maxLines = 1
+                                )
+
+                                // Jumlah objek dalam badge kecil
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            color = if (selected) {
+                                                Color.White.copy(alpha = 0.2f)
+                                            } else {
+                                                MaterialTheme.colorScheme.outlineVariant.copy(
+                                                    alpha = 0.5f
+                                                )
+                                            },
+                                            shape = CircleShape
+                                        )
+                                        .padding(
+                                            horizontal = 5.dp,
+                                            vertical = 2.dp
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = count.toString(),
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (selected) {
+                                            Color.White
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
+
+
 
         // List of Objects
         if (filteredInspections.isEmpty()) {
