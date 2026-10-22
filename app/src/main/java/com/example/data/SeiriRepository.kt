@@ -2,6 +2,7 @@ package com.example.data
 
 import android.util.Log
 import com.example.data.mapper.FirestoreMapper
+import com.example.data.repository.AreaRepository
 import com.example.data.service.ImportCsvService
 import com.example.data.utils.DateUtils
 import com.example.model.*
@@ -23,13 +24,9 @@ class SeiriRepository private constructor() {
         }
     }
 
-    private var areasListener: ListenerRegistration? = null
-    private var zonesListener: ListenerRegistration? = null
     private var objectsListener: ListenerRegistration? = null
-    private var groupsListener: ListenerRegistration? = null
 
-    private val _groups = MutableStateFlow<List<String>>(listOf("PLANT 1", "PLANT 2"))
-    val groups: StateFlow<List<String>> = _groups.asStateFlow()
+    val groups get() = AreaRepository.groups
 
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
@@ -40,11 +37,8 @@ class SeiriRepository private constructor() {
     private val _currentUser = MutableStateFlow<User>(SampleData.adminUser)
     val currentUser: StateFlow<User> = _currentUser.asStateFlow()
 
-    private val _areas = MutableStateFlow<List<Area>>(SampleData.initialAreas)
-    val areas: StateFlow<List<Area>> = _areas.asStateFlow()
-
-    private val _zones = MutableStateFlow<List<Zone>>(SampleData.initialZones)
-    val zones: StateFlow<List<Zone>> = _zones.asStateFlow()
+    val areas get() = AreaRepository.areas
+    val zones get() = AreaRepository.zones
 
     private val _objects = MutableStateFlow<List<SeiriObject>>(SampleData.initialObjects)
     val objects: StateFlow<List<SeiriObject>> = _objects.asStateFlow()
@@ -79,125 +73,7 @@ class SeiriRepository private constructor() {
 
         _isSyncing.value = true
 
-        val groupMap = mutableMapOf<String, String>()
-
-        // 1. master_groups
-        groupsListener?.remove()
-        groupsListener = db.collection("master_groups").addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                Log.w("SeiriRepository", "Error listen master_groups: ${error.message}")
-                return@addSnapshotListener
-            }
-            if (snapshot != null && !snapshot.isEmpty) {
-                val list = snapshot.documents.mapNotNull { doc ->
-                    val gId = doc.getString("group_id") ?: doc.id
-                    val gName = doc.getString("group_name")
-                        ?: doc.getString("groupName")
-                        ?: doc.getString("name")
-                        ?: gId
-                    groupMap[gId] = gName
-                    gName
-                }.distinct()
-                if (list.isNotEmpty()) {
-                    _groups.value = list
-                }
-            }
-        }
-
-        // 2. master_areas
-        areasListener?.remove()
-        areasListener = db.collection("master_areas").addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                Log.e("SeiriRepository", "Error listen master_areas: ${error.message}")
-                _syncError.value = "Error areas: ${error.localizedMessage}"
-                return@addSnapshotListener
-            }
-            if (snapshot != null && !snapshot.isEmpty) {
-                val list = snapshot.documents.mapNotNull { doc ->
-                    try {
-                        val id = doc.getString("area_id") ?: doc.getString("id") ?: doc.id
-                        val gId = doc.getString("group_id") ?: ""
-                        val group = doc.getString("group_name")
-                            ?: groupMap[gId]
-                            ?: doc.getString("group")
-                            ?: gId.ifEmpty { "PLANT 1" }
-                        val code = doc.getString("area_code")
-                            ?: doc.getString("areaCode")
-                            ?: doc.getString("code")
-                            ?: id
-                        val name = doc.getString("area_name")
-                            ?: doc.getString("areaName")
-                            ?: doc.getString("name")
-                            ?: code
-                        val desc = doc.getString("description")
-                            ?: doc.getString("desc")
-                            ?: ""
-                        val isActive = doc.getBoolean("isActive")
-                            ?: doc.getBoolean("is_active")
-                            ?: true
-                        Area(
-                            id = id,
-                            group = group,
-                            areaCode = code,
-                            areaName = name,
-                            description = desc,
-                            isActive = isActive
-                        )
-                    } catch (e: Exception) {
-                        Log.e("SeiriRepository", "Error parsing area doc ${doc.id}: ${e.message}")
-                        null
-                    }
-                }
-                if (list.isNotEmpty()) {
-                    _areas.value = list
-                    Log.d("SeiriRepository", "Tersinkron ${list.size} area dari master_areas")
-                }
-            }
-        }
-
-        // 3. master_zones
-        zonesListener?.remove()
-        zonesListener = db.collection("master_zones").addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                Log.e("SeiriRepository", "Error listen master_zones: ${error.message}")
-                return@addSnapshotListener
-            }
-            if (snapshot != null && !snapshot.isEmpty) {
-                val list = snapshot.documents.mapNotNull { doc ->
-                    try {
-                        val id = doc.getString("zone_id") ?: doc.getString("id") ?: doc.id
-                        val areaId = doc.getString("area_id")
-                            ?: doc.getString("areaId")
-                            ?: ""
-                        val code = doc.getString("zone_code")
-                            ?: doc.getString("zoneCode")
-                            ?: doc.getString("code")
-                            ?: id
-                        val name = doc.getString("zone_name")
-                            ?: doc.getString("zoneName")
-                            ?: doc.getString("name")
-                            ?: code
-                        val isActive = doc.getBoolean("isActive")
-                            ?: doc.getBoolean("is_active")
-                            ?: true
-                        Zone(
-                            id = id,
-                            areaId = areaId,
-                            zoneCode = code,
-                            zoneName = name,
-                            isActive = isActive
-                        )
-                    } catch (e: Exception) {
-                        Log.e("SeiriRepository", "Error parsing zone doc ${doc.id}: ${e.message}")
-                        null
-                    }
-                }
-                if (list.isNotEmpty()) {
-                    _zones.value = list
-                    Log.d("SeiriRepository", "Tersinkron ${list.size} zona dari master_zones")
-                }
-            }
-        }
+        AreaRepository.initSync()
 
         // 4. master_objects
         objectsListener?.remove()
@@ -375,7 +251,7 @@ class SeiriRepository private constructor() {
             changedBy = "${user.name} (${user.role.label})",
             changeType = "CREATE",
             oldValues = "-",
-            newValues = "Objek baru ditambahkan: ${newObj.name} di ${getAreaName(areaId)}"
+            newValues = "Objek baru ditambahkan: ${newObj.name} di ${AreaRepository.getAreaName(areaId)}"
         )
 
         return Result.success(newObj)
@@ -400,7 +276,7 @@ class SeiriRepository private constructor() {
             return Result.failure(IllegalAccessException("Anda tidak memiliki izin mengedit objek dari area lain."))
         }
 
-        val oldSummary = "Nama: ${current.name}, Zona: ${getZoneName(current.zoneId)}, PIC: ${current.pic}, Frekuensi: ${current.usageFrequency.label}"
+        val oldSummary = "Nama: ${current.name}, Zona: ${AreaRepository.getZoneName(current.zoneId)}, PIC: ${current.pic}, Frekuensi: ${current.usageFrequency.label}"
         val updated = current.copy(
             name = name.trim(),
             zoneId = zoneId,
@@ -414,7 +290,7 @@ class SeiriRepository private constructor() {
             updatedBy = user.name,
             updatedAt = DateUtils.currentDate()
         )
-        val newSummary = "Nama: ${updated.name}, Zona: ${getZoneName(updated.zoneId)}, PIC: ${updated.pic}, Frekuensi: ${updated.usageFrequency.label}"
+        val newSummary = "Nama: ${updated.name}, Zona: ${AreaRepository.getZoneName(updated.zoneId)}, PIC: ${updated.pic}, Frekuensi: ${updated.usageFrequency.label}"
 
         _objects.value = _objects.value.map { if (it.id == id) updated else it }
 
@@ -593,7 +469,7 @@ class SeiriRepository private constructor() {
 
     fun createSession(mentorId: String, areaId: String, zoneId: String, notes: String): MentoringSession {
         val user = _currentUser.value
-        val area = _areas.value.find { it.id == areaId }
+        val area = AreaRepository.areas.value.find { it.id == areaId }
         return createOrResumeSession(
             mentorId = mentorId,
             mentorName = user.name,
@@ -671,7 +547,7 @@ class SeiriRepository private constructor() {
                     responsiblePerson = insp.pic.ifEmpty { targetObj.pic },
                     followUpAction = insp.actionDescription,
                     objectNameSnapshot = targetObj.name,
-                    areaNameSnapshot = getAreaName(targetObj.areaId),
+                    areaNameSnapshot = AreaRepository.getAreaName(targetObj.areaId),
                     createdBy = user.name,
                     createdAt = DateUtils.currentTimestamp()
                 )
@@ -699,7 +575,7 @@ class SeiriRepository private constructor() {
         logChange(
             objectId = "SES_${session.id}",
             objectCode = "SESI-6S",
-            objectName = "Sesi Mentoring ${getZoneName(session.zoneId)}",
+            objectName = "Sesi Mentoring ${AreaRepository.getZoneName(session.zoneId)}",
             changedBy = "${user.name} (${user.role.label})",
             changeType = "SESSION_COMPLETE",
             oldValues = "Status: DRAFT",
@@ -746,7 +622,7 @@ class SeiriRepository private constructor() {
             conditionNotes = conditionNotes,
             followUpAction = followUpAction,
             objectNameSnapshot = targetObj.name,
-            areaNameSnapshot = getAreaName(targetObj.areaId),
+            areaNameSnapshot = AreaRepository.getAreaName(targetObj.areaId),
             createdBy = user.name,
             createdAt = DateUtils.currentTimestamp()
         )
@@ -841,8 +717,8 @@ class SeiriRepository private constructor() {
             objectName = targetObj.name,
             changedBy = "${user.name} (${user.role.label})",
             changeType = "TRANSFER_REQ",
-            oldValues = "Area Pemilik: ${getAreaName(targetObj.areaId)}",
-            newValues = "Permintaan transfer ke: ${getAreaName(toAreaId)} | Alasan: $reason",
+            oldValues = "Area Pemilik: ${AreaRepository.getAreaName(targetObj.areaId)}",
+            newValues = "Permintaan transfer ke: ${AreaRepository.getAreaName(toAreaId)} | Alasan: $reason",
             relatedTransferRequestId = request.id
         )
 
@@ -884,7 +760,7 @@ class SeiriRepository private constructor() {
             val targetObj = _objects.value.find { it.id == request.objectId }
             if (targetObj != null) {
                 // Find a default zone in the target area
-                val targetZone = _zones.value.find { it.areaId == request.toAreaId }
+                val targetZone = AreaRepository.zones.value.find { it.areaId == request.toAreaId }
                 val updatedObj = targetObj.copy(
                     areaId = request.toAreaId,
                     zoneId = targetZone?.id ?: targetObj.zoneId,
@@ -899,8 +775,8 @@ class SeiriRepository private constructor() {
                     objectName = targetObj.name,
                     changedBy = "${user.name} (Admin)",
                     changeType = "TRANSFER",
-                    oldValues = "Area Pemilik: ${getAreaName(request.fromAreaId)}",
-                    newValues = "Area Pemilik Baru: ${getAreaName(request.toAreaId)} (Disetujui)",
+                    oldValues = "Area Pemilik: ${AreaRepository.getAreaName(request.fromAreaId)}",
+                    newValues = "Area Pemilik Baru: ${AreaRepository.getAreaName(request.toAreaId)} (Disetujui)",
                     relatedTransferRequestId = requestId
                 )
             }
@@ -911,7 +787,7 @@ class SeiriRepository private constructor() {
                 objectName = request.objectName,
                 changedBy = "${user.name} (Admin)",
                 changeType = "TRANSFER_REJECTED",
-                oldValues = "Pengajuan transfer ke ${getAreaName(request.toAreaId)}",
+                oldValues = "Pengajuan transfer ke ${AreaRepository.getAreaName(request.toAreaId)}",
                 newValues = "Ditolak oleh Admin: $reviewNotes",
                 relatedTransferRequestId = requestId
             )
@@ -923,7 +799,7 @@ class SeiriRepository private constructor() {
     // Spreadsheet import: parsing lives in ImportCsvService, state mutation stays here
     fun executeImport(previewRows: List<ImportCsvService.ImportPreviewRow>): ImportCsvService.ImportResult {
         val user = _currentUser.value
-        val result = ImportCsvService.executeImport(previewRows, user, _areas.value, _zones.value)
+        val result = ImportCsvService.executeImport(previewRows, user, AreaRepository.areas.value, AreaRepository.zones.value)
         if (result.newObjects.isNotEmpty()) {
             _objects.value = result.newObjects + _objects.value
             logChange(
@@ -939,10 +815,10 @@ class SeiriRepository private constructor() {
         return result
     }
 
-    // Helpers
-    fun getAreaName(areaId: String): String = _areas.value.find { it.id == areaId }?.areaName ?: "Unknown Area"
-    fun getAreaCode(areaId: String): String = _areas.value.find { it.id == areaId }?.areaCode ?: "??"
-    fun getZoneName(zoneId: String): String = _zones.value.find { it.id == zoneId }?.zoneName ?: "Unknown Zone"
+    // Helpers (delegated to AreaRepository)
+    fun getAreaName(areaId: String): String = AreaRepository.getAreaName(areaId)
+    fun getAreaCode(areaId: String): String = AreaRepository.getAreaCode(areaId)
+    fun getZoneName(zoneId: String): String = AreaRepository.getZoneName(zoneId)
 
     private fun logChange(
         objectId: String,
