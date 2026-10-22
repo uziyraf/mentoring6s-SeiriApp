@@ -1,4 +1,4 @@
-package com.example.ui.screens
+﻿package com.example.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.SeiriRepository
+import com.example.data.service.ImportCsvService
 import com.example.model.*
 import com.example.ui.components.*
 import com.example.ui.theme.*
@@ -30,6 +31,9 @@ fun SpreadsheetImportScreen(
     onNavigateBack: () -> Unit
 ) {
     val currentUser by repository.currentUser.collectAsState()
+    val areas by repository.areas.collectAsState()
+    val zones by repository.zones.collectAsState()
+    val objects by repository.objects.collectAsState()
 
     // 4 Steps: 1. Input CSV, 2. Column Mapping & Preview, 3. Confirmation Summary, 4. Final Report
     var currentStep by remember { mutableStateOf(1) }
@@ -45,8 +49,8 @@ OBJ-ERR-001,"Barang Tanpa Area Valid",XX,XX-Z1,Lainnya,"Barang uji coba error",O
 """.trimIndent()
 
     var csvText by remember { mutableStateOf(defaultSampleCsv) }
-    var previewRows by remember { mutableStateOf<List<SeiriRepository.ImportPreviewRow>>(emptyList()) }
-    var importResult by remember { mutableStateOf<SeiriRepository.ImportResult?>(null) }
+    var previewRows by remember { mutableStateOf<List<ImportCsvService.ImportPreviewRow>>(emptyList()) }
+    var importResult by remember { mutableStateOf<ImportCsvService.ImportResult?>(null) }
     var activeTab by remember { mutableStateOf(0) } // 0: Semua, 1: Valid, 2: Duplikat, 3: Error
 
     Column(
@@ -189,7 +193,7 @@ OBJ-ERR-001,"Barang Tanpa Area Valid",XX,XX-Z1,Lainnya,"Barang uji coba error",O
                     item {
                         Button(
                             onClick = {
-                                previewRows = repository.parseAndPreviewCsv(csvText)
+                                previewRows = ImportCsvService.parseAndPreviewCsv(csvText, areas, zones, objects)
                                 currentStep = 2
                             },
                             enabled = csvText.isNotBlank(),
@@ -291,7 +295,7 @@ OBJ-ERR-001,"Barang Tanpa Area Valid",XX,XX-Z1,Lainnya,"Barang uji coba error",O
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(text = row.rawName, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                     Text(
-                                        text = "Area: ${row.matchedArea?.areaName ?: "Tidak Cocok ('${row.rawAreaCode}')"} • Zona: ${row.matchedZone?.zoneName ?: "Zona Default"} • PIC: ${row.rawPic}",
+                                        text = "Area: ${row.matchedArea?.areaName ?: "Tidak Cocok ('${row.rawAreaCode}')"} â€¢ Zona: ${row.matchedZone?.zoneName ?: "Zona Default"} â€¢ PIC: ${row.rawPic}",
                                         fontSize = 11.sp,
                                         color = SecondarySlate
                                     )

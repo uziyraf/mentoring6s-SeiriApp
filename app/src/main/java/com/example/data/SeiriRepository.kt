@@ -1,7 +1,8 @@
-﻿package com.example.data
+package com.example.data
 
 import android.util.Log
 import com.example.data.mapper.FirestoreMapper
+import com.example.data.service.ImportCsvService
 import com.example.data.utils.DateUtils
 import com.example.model.*
 import com.google.firebase.firestore.FirebaseFirestore
@@ -708,56 +709,6 @@ class SeiriRepository private constructor() {
         return Result.success(Unit)
     }
 
-    fun generateSessionJson(session: MentoringSession): String {
-        val area = _areas.value.find { it.id == session.areaId }
-        val zone = _zones.value.find { it.id == session.zoneId }
-        val sb = StringBuilder()
-        sb.append("{\n")
-        sb.append("  \"session_id\": \"${session.id}\",\n")
-        sb.append("  \"group\": \"${session.groupName}\",\n")
-        sb.append("  \"area_code\": \"${area?.areaCode ?: ""}\",\n")
-        sb.append("  \"area_name\": \"${area?.areaName ?: ""}\",\n")
-        sb.append("  \"zone_code\": \"${zone?.zoneCode ?: ""}\",\n")
-        sb.append("  \"zone_name\": \"${zone?.zoneName ?: ""}\",\n")
-        sb.append("  \"mentor_id\": \"${session.mentorId}\",\n")
-        sb.append("  \"mentor_name\": \"${session.mentorName}\",\n")
-        sb.append("  \"session_date\": \"${session.sessionDate}\",\n")
-        sb.append("  \"status\": \"${session.status.name}\",\n")
-        sb.append("  \"current_stage\": ${session.currentStage},\n")
-        sb.append("  \"total_objects\": ${session.inspections.size},\n")
-        sb.append("  \"objects\": [\n")
-        session.inspections.forEachIndexed { idx, item ->
-            sb.append("    {\n")
-            sb.append("      \"object_id\": \"${item.objectId}\",\n")
-            sb.append("      \"object_code\": \"${item.objectCode}\",\n")
-            sb.append("      \"object_name\": \"${item.objectName}\",\n")
-            sb.append("      \"function\": \"${item.function.replace("\"", "\\\"")}\",\n")
-            sb.append("      \"usage_frequency\": \"${item.usageFrequency}\",\n")
-            sb.append("      \"last_used\": \"${item.lastUsed}\",\n")
-            sb.append("      \"initial_assessment\": \"${item.initialAssessment}\",\n")
-            sb.append("      \"seiri_decision\": \"${item.seiriDecision}\",\n")
-            sb.append("      \"decision_reason\": \"${item.decisionReason.replace("\"", "\\\"")}\",\n")
-            sb.append("      \"action_description\": \"${item.actionDescription.replace("\"", "\\\"")}\",\n")
-            sb.append("      \"pic\": \"${item.pic}\",\n")
-            sb.append("      \"due_date\": \"${item.dueDate}\"\n")
-            sb.append("    }${if (idx < session.inspections.size - 1) "," else ""}\n")
-        }
-        sb.append("  ]\n")
-        sb.append("}")
-        return sb.toString()
-    }
-
-    fun generateGoogleSheetsCsv(session: MentoringSession): String {
-        val area = _areas.value.find { it.id == session.areaId }
-        val zone = _zones.value.find { it.id == session.zoneId }
-        val sb = StringBuilder()
-        sb.append("Timestamp,Session ID,Group,Area,Zone,Mentor,Object Code,Object Name,Fungsi,Frekuensi Penggunaan,Terakhir Digunakan,Penilaian Awal,Keputusan Seiri,Alasan Keputusan,Rencana Tindakan,PIC,Tenggat Waktu,Status Sesi\n")
-        session.inspections.forEach { item ->
-            sb.append("\"${session.sessionDate}\",\"${session.id}\",\"${session.groupName}\",\"${area?.areaName}\",\"${zone?.zoneName}\",\"${session.mentorName}\",\"${item.objectCode}\",\"${item.objectName}\",\"${item.function}\",\"${item.usageFrequency}\",\"${item.lastUsed}\",\"${item.initialAssessment}\",\"${item.seiriDecision}\",\"${item.decisionReason}\",\"${item.actionDescription}\",\"${item.pic}\",\"${item.dueDate}\",\"${session.status.name}\"\n")
-        }
-        return sb.toString()
-    }
-
     fun saveValidation(
         sessionId: String,
         objectId: String,
@@ -969,202 +920,23 @@ class SeiriRepository private constructor() {
         return Result.success(Unit)
     }
 
-    // Spreadsheet / CSV Import Engine
-    data class ImportPreviewRow(
-        val rowIndex: Int,
-        val rawCode: String,
-        val rawName: String,
-        val rawAreaCode: String,
-        val rawZoneCode: String,
-        val rawCategory: String,
-        val rawFunction: String,
-        val rawPic: String,
-        val isValid: Boolean,
-        val matchedArea: Area?,
-        val matchedZone: Zone?,
-        val errors: List<String>,
-        val isDuplicate: Boolean
-    )
-
-    data class ImportResult(
-        val totalProcessed: Int,
-        val importedCount: Int,
-        val skippedCount: Int,
-        val duplicateCount: Int,
-        val errorCount: Int,
-        val logs: List<String>
-    )
-
-    fun parseAndPreviewCsv(csvContent: String): List<ImportPreviewRow> {
-        val lines = csvContent.lines().filter { it.isNotBlank() }
-        if (lines.isEmpty()) return emptyList()
-
-        val rows = mutableListOf<ImportPreviewRow>()
-        // Determine if line 0 is header
-        val startIndex = if (lines[0].contains("Kode", ignoreCase = true) || lines[0].contains("Code", ignoreCase = true) || lines[0].contains("Nama", ignoreCase = true)) 1 else 0
-
-        for (i in startIndex until lines.size) {
-            val line = lines[i]
-            val cols = line.split(",").map { it.trim().removeSurrounding("\"") }
-            val rawCode = cols.getOrElse(0) { "" }
-            val rawName = cols.getOrElse(1) { "" }
-            val rawArea = cols.getOrElse(2) { "" }
-            val rawZone = cols.getOrElse(3) { "" }
-            val rawCat = cols.getOrElse(4) { "Alat Kerja" }
-            val rawFunc = cols.getOrElse(5) { "" }
-            val rawPic = cols.getOrElse(6) { "Operator" }
-
-            val errors = mutableListOf<String>()
-            if (rawCode.isBlank()) errors.add("Kode objek kosong")
-            if (rawName.isBlank()) errors.add("Nama objek kosong")
-
-            // Match area
-            val matchedArea = _areas.value.find {
-                it.areaCode.equals(rawArea, ignoreCase = true) ||
-                it.areaCode.startsWith(rawArea, ignoreCase = true) ||
-                rawArea.startsWith(it.areaCode, ignoreCase = true) ||
-                it.areaName.contains(rawArea, ignoreCase = true) ||
-                it.id.equals(rawArea, ignoreCase = true)
-            }
-            if (matchedArea == null) {
-                errors.add("Area '$rawArea' tidak dikenali")
-            }
-
-            // Match zone
-            val matchedZone = _zones.value.find {
-                (matchedArea == null || it.areaId == matchedArea.id) &&
-                (it.zoneCode.equals(rawZone, ignoreCase = true) ||
-                 it.zoneCode.startsWith(rawZone, ignoreCase = true) ||
-                 rawZone.startsWith(it.zoneCode, ignoreCase = true) ||
-                 it.zoneName.contains(rawZone, ignoreCase = true))
-            } ?: _zones.value.find { matchedArea != null && it.areaId == matchedArea.id }
-
-            // Check duplicate
-            val isDuplicate = _objects.value.any { it.objectCode.equals(rawCode, ignoreCase = true) }
-            if (isDuplicate) {
-                errors.add("Kode '$rawCode' sudah ada di sistem")
-            }
-
-            rows.add(
-                ImportPreviewRow(
-                    rowIndex = i + 1,
-                    rawCode = rawCode,
-                    rawName = rawName,
-                    rawAreaCode = rawArea,
-                    rawZoneCode = rawZone,
-                    rawCategory = rawCat,
-                    rawFunction = rawFunc,
-                    rawPic = rawPic,
-                    isValid = errors.isEmpty(),
-                    matchedArea = matchedArea,
-                    matchedZone = matchedZone,
-                    errors = errors,
-                    isDuplicate = isDuplicate
-                )
-            )
-        }
-        return rows
-    }
-
-    fun executeImport(previewRows: List<ImportPreviewRow>): ImportResult {
+    // Spreadsheet import: parsing lives in ImportCsvService, state mutation stays here
+    fun executeImport(previewRows: List<ImportCsvService.ImportPreviewRow>): ImportCsvService.ImportResult {
         val user = _currentUser.value
-        val validRows = previewRows.filter { it.isValid }
-        var imported = 0
-        var skipped = 0
-        var duplicates = 0
-        var errors = 0
-        val logs = mutableListOf<String>()
-
-        val newObjects = mutableListOf<SeiriObject>()
-
-        for (row in previewRows) {
-            if (row.isDuplicate) {
-                duplicates++
-                skipped++
-                logs.add("Baris ${row.rowIndex}: Dilewati karena duplikat kode '${row.rawCode}'.")
-                continue
-            }
-            if (!row.isValid) {
-                errors++
-                skipped++
-                logs.add("Baris ${row.rowIndex}: Gagal diimpor - ${row.errors.joinToString(", ")}.")
-                continue
-            }
-
-            val area = row.matchedArea ?: _areas.value.first()
-            val zone = row.matchedZone ?: _zones.value.first { it.areaId == area.id }
-
-            val obj = SeiriObject(
-                id = "obj_imp_${UUID.randomUUID().toString().take(8)}",
-                sourceObjectId = "IMP-${row.rawCode}",
-                objectCode = row.rawCode.uppercase(),
-                areaId = area.id,
-                zoneId = zone.id,
-                name = row.rawName,
-                description = "Diimpor dari berkas spreadsheet",
-                function = row.rawFunction.ifEmpty { "Peralatan operasional standar" },
-                category = row.rawCategory.ifEmpty { "Alat Kerja" },
-                condition = ObjectCondition.BAIK,
-                pic = row.rawPic.ifEmpty { "PIC Area" },
-                usageFrequency = UsageFrequency.DAILY,
-                lastUsedDate = DateUtils.currentDate(),
-                validationStatus = ValidationStatus.BELUM_DIVALIDASI,
-                createdBy = user.name,
-                updatedBy = user.name,
-                createdAt = DateUtils.currentDate(),
-                updatedAt = DateUtils.currentDate()
-            )
-            newObjects.add(obj)
-            imported++
-        }
-
-        if (newObjects.isNotEmpty()) {
-            _objects.value = newObjects + _objects.value
+        val result = ImportCsvService.executeImport(previewRows, user, _areas.value, _zones.value)
+        if (result.newObjects.isNotEmpty()) {
+            _objects.value = result.newObjects + _objects.value
             logChange(
                 objectId = "BATCH_IMPORT",
                 objectCode = "BATCH",
-                objectName = "Impor Spreadsheet $imported Objek",
+                objectName = "Impor Spreadsheet ${result.importedCount} Objek",
                 changedBy = "${user.name} (Admin)",
                 changeType = "IMPORT_BATCH",
                 oldValues = "-",
-                newValues = "Berhasil mengimpor $imported objek dari spreadsheet."
+                newValues = "Berhasil mengimpor ${result.importedCount} objek dari spreadsheet."
             )
         }
-
-        return ImportResult(
-            totalProcessed = previewRows.size,
-            importedCount = imported,
-            skippedCount = skipped,
-            duplicateCount = duplicates,
-            errorCount = errors,
-            logs = logs
-        )
-    }
-
-    // Reports & CSV export generator
-    fun generateObjectsCsv(areaIdFilter: String? = null): String {
-        val filtered = if (areaIdFilter != null) {
-            _objects.value.filter { it.areaId == areaIdFilter }
-        } else {
-            _objects.value
-        }
-
-        val sb = StringBuilder()
-        sb.append("Kode Objek,Nama Objek,Area,Zona,Kategori,Kondisi,PIC,Frekuensi,Status Validasi,Status Aset,Terakhir Digunakan\n")
-        for (o in filtered) {
-            sb.append("\"${o.objectCode}\",")
-            sb.append("\"${o.name}\",")
-            sb.append("\"${getAreaName(o.areaId)}\",")
-            sb.append("\"${getZoneName(o.zoneId)}\",")
-            sb.append("\"${o.category}\",")
-            sb.append("\"${o.condition.label}\",")
-            sb.append("\"${o.pic}\",")
-            sb.append("\"${o.usageFrequency.label}\",")
-            sb.append("\"${o.validationStatus.label}\",")
-            sb.append("\"${if (o.isActive) "Aktif" else "Nonaktif"}\",")
-            sb.append("\"${o.lastUsedDate}\"\n")
-        }
-        return sb.toString()
+        return result
     }
 
     // Helpers

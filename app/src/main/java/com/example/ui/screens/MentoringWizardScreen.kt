@@ -1,4 +1,4 @@
-package com.example.ui.screens
+﻿package com.example.ui.screens
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -32,6 +32,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.SeiriRepository
+import com.example.data.service.ExportService
+import com.example.data.service.ImportCsvService
 import com.example.model.*
 import com.example.ui.components.*
 import com.example.ui.theme.*
@@ -122,7 +124,7 @@ fun MentoringWizardScreen(
                         
                         val area = areas.find { it.id == selectedAreaId }
                         val zone = zones.find { it.id == selectedZoneId }
-                        val locationText = "${area?.group ?: "PLANT 1"} • ${area?.areaName ?: "Area"} • ${zone?.zoneName ?: "Pilih Zona"}"
+                        val locationText = "${area?.group ?: "PLANT 1"} â€¢ ${area?.areaName ?: "Area"} â€¢ ${zone?.zoneName ?: "Pilih Zona"}"
                         
                         Text(
                             text = locationText,
@@ -280,7 +282,7 @@ fun MentoringWizardScreen(
                 val session = activeSession!!
                 when (currentStage) {
                     1 -> {
-                        // TAHAP 1 — IDENTIFIKASI OBJEK
+                        // TAHAP 1 â€” IDENTIFIKASI OBJEK
                         Stage1ObjectIdentification(
                             session = session,
                             repository = repository,
@@ -300,7 +302,7 @@ fun MentoringWizardScreen(
                     }
 
                     2 -> {
-                        // TAHAP 2 — PERIKSA KEBUTUHAN (DIISI PER OBJEK)
+                        // TAHAP 2 â€” PERIKSA KEBUTUHAN (DIISI PER OBJEK)
                         Stage2NeedsAssessment(
                             session = session,
                             onUpdateInspection = { updatedList ->
@@ -325,7 +327,7 @@ fun MentoringWizardScreen(
                     }
 
                     3 -> {
-                        // TAHAP 3 — KEPUTUSAN SEIRI
+                        // TAHAP 3 â€” KEPUTUSAN SEIRI
                         Stage3SeiriDecisions(
                             session = session,
                             onUpdateInspection = { updatedList ->
@@ -350,7 +352,7 @@ fun MentoringWizardScreen(
                     }
 
                     4 -> {
-                        // TAHAP 4 — PIC DAN TINDAKAN (KHUSUS RED TAG / DIPINDAHKAN)
+                        // TAHAP 4 â€” PIC DAN TINDAKAN (KHUSUS RED TAG / DIPINDAHKAN)
                         Stage4ActionPlans(
                             session = session,
                             onUpdateInspection = { updatedList ->
@@ -375,7 +377,7 @@ fun MentoringWizardScreen(
                     }
 
                     5 -> {
-                        // TAHAP 5 — REVIEW & SIMPAN FINAL
+                        // TAHAP 5 â€” REVIEW & SIMPAN FINAL
                         Stage5ReviewAndFinalSubmit(
                             session = session,
                             repository = repository,
@@ -434,8 +436,8 @@ fun MentoringWizardScreen(
     // DIALOG: DATA SCHEMA / JSON / GOOGLE SHEETS
     if (showSchemaDialog && activeSession != null) {
         val session = activeSession!!
-        val jsonText = repository.generateSessionJson(session)
-        val sheetsCsv = repository.generateGoogleSheetsCsv(session)
+        val jsonText = ExportService.generateSessionJson(session, areas, zones)
+        val sheetsCsv = ExportService.generateGoogleSheetsCsv(session, areas, zones)
         var tabIndex by remember { mutableStateOf(0) }
 
         AlertDialog(
@@ -636,13 +638,13 @@ private fun SessionSetupAndDraftPicker(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = "${draft.groupName} • ${draft.sessionDate}",
+                                            text = "${draft.groupName} â€¢ ${draft.sessionDate}",
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.sp,
                                             color = IndustrialNavy
                                         )
                                         Text(
-                                            text = "Tersimpan di Tahap ${draft.currentStage} • ${draft.inspections.size} Objek",
+                                            text = "Tersimpan di Tahap ${draft.currentStage} â€¢ ${draft.inspections.size} Objek",
                                             fontSize = 11.sp,
                                             color = PrimaryBlueDark
                                         )
@@ -733,7 +735,7 @@ private fun SessionSetupAndDraftPicker(
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Column {
                                                 Text(text = "[AREA] ${a.areaName}", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = IndustrialNavy)
-                                                Text(text = "${a.group} • Kode: ${a.areaCode}", fontSize = 10.sp, color = SecondarySlate)
+                                                Text(text = "${a.group} â€¢ Kode: ${a.areaCode}", fontSize = 10.sp, color = SecondarySlate)
                                             }
                                         }
                                     }
@@ -911,14 +913,14 @@ private fun SessionSetupAndDraftPicker(
             ) {
                 Icon(Icons.Default.PlayArrow, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Mulai Tahap 1 — Identifikasi Objek", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Mulai Tahap 1 â€” Identifikasi Objek", fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
         }
     }
 }
 
 // -------------------------------------------------------------------------------------
-// TAHAP 1 — IDENTIFIKASI OBJEK
+// TAHAP 1 â€” IDENTIFIKASI OBJEK
 // -------------------------------------------------------------------------------------
 @Composable
 private fun Stage1ObjectIdentification(
@@ -984,7 +986,7 @@ private fun Stage1ObjectIdentification(
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Text(
-                            text = "Tahap 1 — Identifikasi Objek",
+                            text = "Tahap 1 â€” Identifikasi Objek",
                             fontSize = 14.sp,
                             lineHeight = 18.sp,
                             fontWeight = FontWeight.Bold,
@@ -1273,7 +1275,7 @@ private fun Stage1ObjectIdentification(
 }
 
 // -------------------------------------------------------------------------------------
-// TAHAP 2 — PERIKSA KEBUTUHAN (DIISI PER OBJEK)
+// TAHAP 2 â€” PERIKSA KEBUTUHAN (DIISI PER OBJEK)
 // -------------------------------------------------------------------------------------
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1302,7 +1304,7 @@ private fun Stage2NeedsAssessment(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Tahap 2 — Periksa Kebutuhan",
+                        text = "Tahap 2 â€” Periksa Kebutuhan",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -1549,7 +1551,7 @@ private fun Stage2NeedsAssessment(
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Column {
                                             Text(text = "Foto Objek Tersimpan", fontWeight = FontWeight.Bold, color = StatusGreen)
-                                            Text(text = "${currentItem.photoUri} • Klik untuk hapus/ganti", fontSize = 11.sp, color = SecondarySlate)
+                                            Text(text = "${currentItem.photoUri} â€¢ Klik untuk hapus/ganti", fontSize = 11.sp, color = SecondarySlate)
                                         }
                                     }
                                 } else {
@@ -1618,7 +1620,7 @@ private fun Stage2NeedsAssessment(
 }
 
 // -------------------------------------------------------------------------------------
-// TAHAP 3 — KEPUTUSAN SEIRI
+// TAHAP 3 â€” KEPUTUSAN SEIRI
 // -------------------------------------------------------------------------------------
 @Composable
 private fun Stage3SeiriDecisions(
@@ -1644,7 +1646,7 @@ private fun Stage3SeiriDecisions(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Tahap 3 — Keputusan Seiri",
+                    text = "Tahap 3 â€” Keputusan Seiri",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -1691,7 +1693,7 @@ private fun Stage3SeiriDecisions(
                         }
 
                         Text(
-                            text = "Penilaian Awal: ${item.initialAssessment} • Frekuensi: ${item.usageFrequency}",
+                            text = "Penilaian Awal: ${item.initialAssessment} â€¢ Frekuensi: ${item.usageFrequency}",
                             fontSize = 11.sp,
                             color = SecondarySlate
                         )
@@ -1770,7 +1772,7 @@ private fun Stage3SeiriDecisions(
 }
 
 // -------------------------------------------------------------------------------------
-// TAHAP 4 — PIC DAN TINDAKAN (KHUSUS RED TAG / DIPINDAHKAN)
+// TAHAP 4 â€” PIC DAN TINDAKAN (KHUSUS RED TAG / DIPINDAHKAN)
 // -------------------------------------------------------------------------------------
 @Composable
 private fun Stage4ActionPlans(
@@ -1796,7 +1798,7 @@ private fun Stage4ActionPlans(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Tahap 4 — PIC dan Tindakan",
+                    text = "Tahap 4 â€” PIC dan Tindakan",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -2016,7 +2018,7 @@ private fun Stage4ActionPlans(
 }
 
 // -------------------------------------------------------------------------------------
-// TAHAP 5 — REVIEW & SIMPAN FINAL
+// TAHAP 5 â€” REVIEW & SIMPAN FINAL
 // -------------------------------------------------------------------------------------
 @Composable
 private fun Stage5ReviewAndFinalSubmit(
@@ -2041,7 +2043,7 @@ private fun Stage5ReviewAndFinalSubmit(
     ) {
         item {
             Text(
-                text = "Tahap 5 — Review & Simpan Final",
+                text = "Tahap 5 â€” Review & Simpan Final",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -2112,7 +2114,7 @@ private fun Stage5ReviewAndFinalSubmit(
                                 Column(modifier = Modifier.padding(10.dp)) {
                                     Text(text = "${itm.objectName} (${itm.objectCode})", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                     Text(text = "Tindakan: ${itm.actionDescription.ifEmpty { "Perlu disposisi / mutasi" }}", fontSize = 11.sp)
-                                    Text(text = "PIC: ${itm.pic.ifEmpty { "Operator Area" }} • Tenggat: ${itm.dueDate.ifEmpty { "Segera" }}", fontSize = 10.sp, color = SecondarySlate)
+                                    Text(text = "PIC: ${itm.pic.ifEmpty { "Operator Area" }} â€¢ Tenggat: ${itm.dueDate.ifEmpty { "Segera" }}", fontSize = 10.sp, color = SecondarySlate)
                                 }
                             }
                         }

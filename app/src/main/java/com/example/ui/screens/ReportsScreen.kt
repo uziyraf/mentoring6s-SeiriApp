@@ -1,4 +1,4 @@
-package com.example.ui.screens
+﻿package com.example.ui.screens
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -23,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.SeiriRepository
+import com.example.data.service.ExportService
+import com.example.data.service.ImportCsvService
 import com.example.model.*
 import com.example.ui.components.*
 import com.example.ui.theme.*
@@ -33,6 +35,7 @@ fun ReportsScreen(
 ) {
     val context = LocalContext.current
     val areas by repository.areas.collectAsState()
+    val zones by repository.zones.collectAsState()
     val objects by repository.objects.collectAsState()
     val transferRequests by repository.transferRequests.collectAsState()
     val validations by repository.validations.collectAsState()
@@ -86,7 +89,7 @@ fun ReportsScreen(
 
                         Button(
                             onClick = {
-                                val csv = repository.generateObjectsCsv(selectedAreaId)
+                                val csv = ExportService.generateObjectsCsv(selectedAreaId, areas, zones, objects)
                                 exportedCsvText = csv
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 val clip = ClipData.newPlainText("Seiri 6S Export", csv)
@@ -299,7 +302,7 @@ fun ReportsScreen(
                                 }
                                 Text(text = act.actionDescription, fontSize = 11.sp, color = IndustrialNavy)
                                 Text(
-                                    text = "PIC: ${act.assignedTo} • Target: ${act.dueDate} • Area: ${repository.getAreaName(act.areaId)}",
+                                    text = "PIC: ${act.assignedTo} â€¢ Target: ${act.dueDate} â€¢ Area: ${repository.getAreaName(act.areaId)}",
                                     fontSize = 10.sp,
                                     color = SecondarySlate
                                 )

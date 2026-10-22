@@ -1,7 +1,8 @@
-package com.example
+﻿package com.example
 
 import com.example.data.SampleData
 import com.example.data.SeiriRepository
+import com.example.data.service.ImportCsvService
 import com.example.model.*
 import org.junit.Assert.*
 import org.junit.Before
@@ -111,7 +112,7 @@ class ExampleUnitTest {
             OBJ-ERR-01,"Tanpa Area",UNKNOWN,UNKNOWN,Alat,"Fungsi",Andi
         """.trimIndent()
 
-        val preview = repository.parseAndPreviewCsv(sampleCsv)
+        val preview = ImportCsvService.parseAndPreviewCsv(sampleCsv, repository.areas.value, repository.zones.value, repository.objects.value)
         assertEquals(2, preview.size)
         assertTrue(preview[0].isValid)
         assertFalse(preview[1].isValid)
