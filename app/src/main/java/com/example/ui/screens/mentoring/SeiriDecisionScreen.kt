@@ -43,7 +43,7 @@ internal fun Stage3SeiriDecisions(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Tahap 3 â€” Keputusan Seiri",
+                    text = "Tahap 3 Keputusan Seiri",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )

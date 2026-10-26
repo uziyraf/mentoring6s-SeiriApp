@@ -37,7 +37,7 @@ internal fun Stage2NeedsAssessment(
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Sticky Header: Tabs of objects
-        Surface(C
+        Surface(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 2.dp,
             modifier = Modifier.fillMaxWidth()
@@ -49,7 +49,7 @@ internal fun Stage2NeedsAssessment(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Tahap 2 â€” Periksa Kebutuhan",
+                        text = "Tahap 2  Periksa Kebutuhan",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )

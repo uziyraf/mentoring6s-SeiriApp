@@ -16,10 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.data.SeiriRepository
 import com.example.data.service.ExportService
 import com.example.model.*
@@ -101,9 +99,9 @@ fun MentoringWizardScreen(
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 6.dp)
+                .padding(horizontal = 6.dp, vertical = 3.dp)
         ) {
-            Column(modifier = Modifier.padding(12.dp)) {
+            Column(modifier = Modifier.padding(6.dp)) {
                 // --- HEADER LOKASI & JUDUL ---
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -113,17 +111,16 @@ fun MentoringWizardScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Mentoring 6S: Seiri (Pemilahan)",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.titleSmall
                         )
                         
                         val area = areas.find { it.id == selectedAreaId }
                         val zone = zones.find { it.id == selectedZoneId }
-                        val locationText = "${area?.group ?: "PLANT 1"} â€¢ ${area?.areaName ?: "Area"} â€¢ ${zone?.zoneName ?: "Pilih Zona"}"
+                        val locationText = "${area?.group ?: "PLANT 1"} • ${area?.areaName ?: "Area"} • ${zone?.zoneName ?: "Pilih Zona"}"
                         
                         Text(
                             text = locationText,
-                            fontSize = 10.sp,
+                            style = MaterialTheme.typography.labelSmall,
                             color = SecondarySlate,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -172,14 +169,12 @@ fun MentoringWizardScreen(
                 ) {
                     Text(
                         text = "Tahap $currentStage dari 5: ${stageTitles.getOrNull(currentStage - 1) ?: ""}",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.labelMedium,
                         color = PrimaryBlue
                     )
                     Text(
                         text = "${(currentStage * 100) / 5}%",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelMedium,
                         color = SecondarySlate
                     )
                 }
@@ -441,7 +436,7 @@ fun MentoringWizardScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.DataObject, contentDescription = null, tint = PrimaryBlue)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Struktur Data Sesi & Objek", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Struktur Data Sesi & Objek", style = MaterialTheme.typography.titleMedium)
                 }
             },
             text = {
@@ -450,12 +445,12 @@ fun MentoringWizardScreen(
                         Tab(
                             selected = tabIndex == 0,
                             onClick = { tabIndex = 0 },
-                            text = { Text("Format JSON", fontSize = 12.sp) }
+                            text = { Text("Format JSON", style = MaterialTheme.typography.labelMedium) }
                         )
                         Tab(
                             selected = tabIndex == 1,
                             onClick = { tabIndex = 1 },
-                            text = { Text("Skema Google Sheets", fontSize = 12.sp) }
+                            text = { Text("Skema Google Sheets", style = MaterialTheme.typography.labelMedium) }
                         )
                     }
 
@@ -473,8 +468,9 @@ fun MentoringWizardScreen(
                                 Text(
                                     text = if (tabIndex == 0) jsonText else sheetsCsv,
                                     color = Color(0xFF67E8F9),
-                                    fontSize = 11.sp,
-                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                    ),
                                 )
                             }
                         }
@@ -514,19 +510,19 @@ fun MentoringWizardScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 70.dp),
+                .padding(bottom = 10.dp),
             contentAlignment = Alignment.BottomCenter
         ) {
             Surface(
                 color = IndustrialNavy,
                 shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(8.dp)
             ) {
                 Text(
                     text = msg,
                     color = Color.White,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
                 )
             }
         }
