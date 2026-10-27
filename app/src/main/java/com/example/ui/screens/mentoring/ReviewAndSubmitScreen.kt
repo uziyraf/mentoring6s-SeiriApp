@@ -44,7 +44,7 @@ internal fun Stage5ReviewAndFinalSubmit(
     ) {
         item {
             Text(
-                text = "Tahap 5 â€” Review & Simpan Final",
+                text = "Tahap 5 Review & Simpan Final",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )

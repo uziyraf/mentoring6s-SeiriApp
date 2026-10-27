@@ -12,9 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.model.*
 import com.example.ui.components.*
 import com.example.ui.theme.*
@@ -85,24 +83,23 @@ internal fun SessionSetupAndDraftPicker(
                     colors = CardDefaults.cardColors(containerColor = StatusAmberContainer),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.HistoryEdu, contentDescription = null, tint = StatusAmber, modifier = Modifier.size(24.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(Icons.Default.HistoryEdu, contentDescription = null, tint = StatusAmber, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "Draf Sesi Mentoring Tersedia (${activeDrafts.size})",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleSmall,
                                 color = Color(0xFF78350F)
                             )
                         }
                         Text(
                             text = "Anda memiliki sesi yang disimpan di Tahap 2 atau tahap lain. Klik untuk melanjutkan hari ini:",
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFF92400E)
                         )
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         activeDrafts.forEach { draft ->
                             Surface(
@@ -113,20 +110,19 @@ internal fun SessionSetupAndDraftPicker(
                                     .padding(vertical = 4.dp)
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(12.dp),
+                                    modifier = Modifier.padding(10.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = "${draft.groupName} â€¢ ${draft.sessionDate}",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp,
+                                            text = "${draft.groupName} • ${draft.sessionDate}",
+                                            style = MaterialTheme.typography.labelLarge,
                                             color = IndustrialNavy
                                         )
                                         Text(
-                                            text = "Tersimpan di Tahap ${draft.currentStage} â€¢ ${draft.inspections.size} Objek",
-                                            fontSize = 11.sp,
+                                            text = "Tersimpan di Tahap ${draft.currentStage} • ${draft.inspections.size} Objek",
+                                            style = MaterialTheme.typography.labelSmall,
                                             color = PrimaryBlueDark
                                         )
                                     }
@@ -135,7 +131,7 @@ internal fun SessionSetupAndDraftPicker(
                                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                                         shape = RoundedCornerShape(8.dp)
                                     ) {
-                                        Text("Lanjutkan", fontSize = 12.sp)
+                                        Text("Lanjutkan", style = MaterialTheme.typography.labelMedium)
                                     }
                                 }
                             }
@@ -156,12 +152,11 @@ internal fun SessionSetupAndDraftPicker(
                     Text(
                         text = "Pencarian Cepat Area / Objek",
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
                         color = IndustrialNavy
                     )
                     Text(
                         text = "Ketik nama area atau objek untuk langsung memilih hirarki terkait",
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.bodySmall,
                         color = SecondarySlate
                     )
 
@@ -185,8 +180,7 @@ internal fun SessionSetupAndDraftPicker(
                             Column(modifier = Modifier.padding(8.dp)) {
                                 Text(
                                     text = "Hasil Pencarian Langsung (Klik untuk pilih):",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.labelLarge,
                                     color = PrimaryBlueDark
                                 )
 
@@ -212,11 +206,11 @@ internal fun SessionSetupAndDraftPicker(
                                             modifier = Modifier.padding(8.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Icon(Icons.Default.Domain, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
+                                            Icon(Icons.Default.Domain, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(8.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Column {
-                                                Text(text = "[AREA] ${a.areaName}", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = IndustrialNavy)
-                                                Text(text = "${a.group} â€¢ Kode: ${a.areaCode}", fontSize = 10.sp, color = SecondarySlate)
+                                                Text(text = "[AREA] ${a.areaName}", style = MaterialTheme.typography.labelLarge, color = IndustrialNavy)
+                                                Text(text = "${a.group} • Kode: ${a.areaCode}", style = MaterialTheme.typography.labelSmall, color = SecondarySlate)
                                             }
                                         }
                                     }
@@ -247,8 +241,8 @@ internal fun SessionSetupAndDraftPicker(
                                             Icon(Icons.Default.Inventory2, contentDescription = null, tint = StatusGreen, modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Column {
-                                                Text(text = "[OBJEK] ${obj.name} (${obj.objectCode})", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = IndustrialNavy)
-                                                Text(text = "${objArea?.group} > ${objArea?.areaName} > ${objZone?.zoneName}", fontSize = 10.sp, color = SecondarySlate)
+                                                Text(text = "[OBJEK] ${obj.name} (${obj.objectCode})", style = MaterialTheme.typography.labelLarge, color = IndustrialNavy)
+                                                Text(text = "${objArea?.group} > ${objArea?.areaName} > ${objZone?.zoneName}", style = MaterialTheme.typography.labelSmall, color = SecondarySlate)
                                             }
                                         }
                                     }
@@ -307,14 +301,13 @@ internal fun SessionSetupAndDraftPicker(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(8.dp)) {
                     Text(
                         text = "Data Sesi & Mentor 6S",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.titleSmall
                     )
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(5.dp))
 
                     // Target Location Info Pill
                     val currentArea = areas.find { it.id == selectedAreaId }
@@ -325,21 +318,20 @@ internal fun SessionSetupAndDraftPicker(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
-                            modifier = Modifier.padding(12.dp),
+                            modifier = Modifier.padding(6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(Icons.Default.LocationOn, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
                             Column {
                                 Text(
                                     text = "Target: ${currentArea?.group ?: "PLANT 1"} > ${currentArea?.areaName ?: "Area"} > ${currentZone?.zoneName ?: "Pilih Zona"}",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
+                                    style = MaterialTheme.typography.labelLarge,
                                     color = PrimaryBlueDark
                                 )
                                 Text(
                                     text = "${objectsInSelectedZone.size} Objek terdata siap diperiksa",
-                                    fontSize = 11.sp,
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = SecondarySlate
                                 )
                             }
@@ -394,7 +386,7 @@ internal fun SessionSetupAndDraftPicker(
             ) {
                 Icon(Icons.Default.PlayArrow, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Mulai Tahap 1 â€” Identifikasi Objek", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Mulai Tahap 1 Identifikasi Objek", style = MaterialTheme.typography.labelLarge)
             }
         }
     }

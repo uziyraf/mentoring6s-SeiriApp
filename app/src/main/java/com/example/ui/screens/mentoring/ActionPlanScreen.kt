@@ -45,7 +45,7 @@ internal fun Stage4ActionPlans(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Tahap 4 â€” PIC dan Tindakan",
+                    text = "Tahap 4 PIC dan Tindakan",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )

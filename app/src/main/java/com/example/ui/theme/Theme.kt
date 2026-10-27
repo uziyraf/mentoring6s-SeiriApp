@@ -61,14 +61,15 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun SeiriTheme(
-    darkTheme: Boolean = false,
+    // Ubah default menjadi isSystemInDarkTheme() agar otomatis ikut HP
+    darkTheme: Boolean = isSystemInDarkTheme(), 
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = Typography, // Memanggil file Type.kt yang baru
         content = content
     )
 }

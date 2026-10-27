@@ -54,6 +54,7 @@ class SeiriRepository private constructor() {
         _isSyncing.value = true
         AreaRepository.initSync()
         ObjectRepository.initSync()
+        MentoringReportRepository.initSync()
     }
 
     // Demo Role Switcher

@@ -94,7 +94,7 @@ internal fun Stage1ObjectIdentification(
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Text(
-                            text = "Tahap 1 â€” Identifikasi Objek",
+                            text = "Tahap 1 Identifikasi Objek",
                             fontSize = 14.sp,
                             lineHeight = 18.sp,
                             fontWeight = FontWeight.Bold,

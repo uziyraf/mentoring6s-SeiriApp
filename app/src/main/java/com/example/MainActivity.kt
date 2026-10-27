@@ -27,9 +27,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.SampleData
 import com.example.data.SeiriRepository
+import com.example.model.MentoringReportRepository
 import com.example.model.UserRole
 import com.example.ui.components.RoleSwitcherDialog
 import com.example.ui.screens.*
+import com.example.ui.screens.MentoringReport.MentoringReportScreen
 import com.example.ui.theme.IndustrialNavy
 import com.example.ui.theme.PrimaryBlue
 import com.example.ui.theme.PrimaryBlueContainer
@@ -51,6 +53,7 @@ sealed class Screen(val title: String, val icon: ImageVector) {
     object MentoringSessions : Screen("Histori Mentoring", Icons.Default.History)
     object MentoringWizard : Screen("Input Sesi Mentoring", Icons.Default.PostAdd)
     object Reports : Screen("Laporan 6S", Icons.Default.BarChart)
+    object MentoringReport : Screen("Laporan Mentoring", Icons.Default.Assignment)
     object AuditLog : Screen("Audit Log", Icons.Default.HistoryEdu)
     object QuestionBank : Screen("Bank Pertanyaan", Icons.Default.Quiz)
     object MentorProfile : Screen("Akun", Icons.Default.AccountCircle)
@@ -81,6 +84,13 @@ fun SeiriApp() {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
+    // =========================================================================
+    // TAMBAHAN BARU: Sinkronisasi Laporan Mentoring dari Firebase saat aplikasi dibuka
+    // =========================================================================
+    LaunchedEffect(Unit) {
+        MentoringReportRepository.initSync()
+    }
+
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Dashboard) }
     var showRoleSwitcherDialog by remember { mutableStateOf(false) }
     var preselectedTransferObjectId by remember { mutableStateOf<String?>(null) }
@@ -102,6 +112,7 @@ fun SeiriApp() {
         Screen.SpreadsheetImport,
         Screen.TransferRequests,
         Screen.MentoringSessions,
+        Screen.MentoringReport,
         Screen.Reports,
         Screen.AuditLog,
         Screen.QuestionBank
@@ -114,6 +125,7 @@ fun SeiriApp() {
         Screen.ObjectMaster,
         Screen.MentorProfile,
         Screen.TransferRequests,
+        Screen.MentoringReport,
         Screen.Reports
     )
 
@@ -347,6 +359,13 @@ fun SeiriApp() {
 
                     Screen.Reports -> ReportsScreen(
                         repository = repository
+                    )
+
+                    Screen.MentoringReport -> MentoringReportScreen(
+                        repository = repository,
+                        sessionId = "",
+                        mentorName = currentUser.name,
+                        mentorId = currentUser.id
                     )
 
                     Screen.AuditLog -> AuditLogScreen(
