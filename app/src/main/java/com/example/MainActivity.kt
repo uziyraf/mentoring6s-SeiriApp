@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.SampleData
 import com.example.data.SeiriRepository
+import com.example.model.MentoringReportRepository
 import com.example.model.UserRole
 import com.example.ui.components.RoleSwitcherDialog
 import com.example.ui.screens.*
@@ -82,6 +83,13 @@ fun SeiriApp() {
     val currentUser by repository.currentUser.collectAsState()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    // =========================================================================
+    // TAMBAHAN BARU: Sinkronisasi Laporan Mentoring dari Firebase saat aplikasi dibuka
+    // =========================================================================
+    LaunchedEffect(Unit) {
+        MentoringReportRepository.initSync()
+    }
 
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Dashboard) }
     var showRoleSwitcherDialog by remember { mutableStateOf(false) }
