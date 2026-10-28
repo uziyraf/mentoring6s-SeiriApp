@@ -9,7 +9,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,13 +24,15 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.SampleData
 import com.example.data.SeiriRepository
 import com.example.model.MentoringReportRepository
 import com.example.model.UserRole
-import com.example.ui.components.RoleSwitcherDialog
 import com.example.ui.screens.*
 import com.example.ui.screens.MentoringReport.MentoringReportScreen
+import com.example.ui.screens.auth.LoginScreen
+import com.example.ui.screens.auth.RegisterScreen
+import com.example.ui.screens.auth.WelcomeScreen
+import com.example.ui.screens.auth.GuestAreaBrowseScreen
 import com.example.ui.theme.IndustrialNavy
 import com.example.ui.theme.PrimaryBlue
 import com.example.ui.theme.PrimaryBlueContainer
@@ -40,8 +41,11 @@ import com.example.ui.theme.SecondarySlate
 import com.example.ui.theme.SecondarySlateLight
 import com.example.ui.theme.SeiriTheme
 import com.example.ui.theme.StatusGreen
-import com.example.ui.theme.StatusGreenContainer
 import kotlinx.coroutines.launch
+import com.example.data.repository.AuthRepository
+
+
+
 
 sealed class Screen(val title: String, val icon: ImageVector) {
     object Dashboard : Screen("Dashboard", Icons.Default.Home)
@@ -56,6 +60,7 @@ sealed class Screen(val title: String, val icon: ImageVector) {
     object MentoringReport : Screen("Laporan Mentoring", Icons.Default.Assignment)
     object AuditLog : Screen("Audit Log", Icons.Default.HistoryEdu)
     object QuestionBank : Screen("Bank Pertanyaan", Icons.Default.Quiz)
+    object GuestAreas : Screen("Area", Icons.Default.Apartment)
     object MentorProfile : Screen("Akun", Icons.Default.AccountCircle)
 }
 
@@ -69,7 +74,59 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    SeiriApp()
+                    // State untuk navigasi Auth
+                    var authScreen by remember { mutableStateOf("WELCOME") }
+                    val authUser by AuthRepository.currentUser.collectAsState()
+                    val isInitializing by AuthRepository.isInitializing.collectAsState()
+                    var syncedUserId by remember { mutableStateOf<String?>(null) }
+
+                    LaunchedEffect(authUser?.id) {
+                        authUser?.let {
+                            SeiriRepository.instance.setCurrentUser(it)
+                            syncedUserId = it.id
+                        } ?: run {
+                            syncedUserId = null
+                        }
+                    }
+
+                    if (isInitializing) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                text = "Memuat sesi...",
+                                color = SecondarySlate,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
+                    } else if (authUser == null) {
+                        // Belum Login
+                        when (authScreen) {
+                            "WELCOME" -> WelcomeScreen(
+                                onNavigateToLogin = { authScreen = "LOGIN" },
+                                onNavigateToRegister = { authScreen = "REGISTER" },
+                                onLoginAsGuest = {
+                                    // loginAsGuest() dipanggil di WelcomeScreen
+                                }
+                            )
+                            "LOGIN" -> LoginScreen(
+                                onLoginSuccess = {},
+                                onNavigateToRegister = { authScreen = "REGISTER" }
+                            )
+                            "REGISTER" -> RegisterScreen(
+                                onNavigateToLogin = { authScreen = "LOGIN" }
+                            )
+                        }
+                    } else if (syncedUserId != authUser?.id) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                text = "Menyiapkan akun...",
+                                color = SecondarySlate,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
+                    } else {
+                        // Sudah Login (Admin, Mentor, atau Guest)
+                        SeiriApp()
+                    }
                 }
             }
         }
@@ -92,7 +149,6 @@ fun SeiriApp() {
     }
 
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Dashboard) }
-    var showRoleSwitcherDialog by remember { mutableStateOf(false) }
     var preselectedTransferObjectId by remember { mutableStateOf<String?>(null) }
 
     // Predictive Back Handling
@@ -129,7 +185,15 @@ fun SeiriApp() {
         Screen.Reports
     )
 
-    val currentNavItems = if (currentUser.role == UserRole.ADMIN) adminNavItems else mentorNavItems
+    val guestNavItems = listOf(
+        Screen.GuestAreas
+    )
+
+    val currentNavItems = when (currentUser.role) {
+        UserRole.ADMIN -> adminNavItems
+        UserRole.MENTOR -> mentorNavItems
+        UserRole.GUEST -> guestNavItems
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -210,7 +274,7 @@ fun SeiriApp() {
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                // Drawer Footer: Quick Switch Role Button
+                // Drawer Footer: Akun dan Keluar
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     shape = RoundedCornerShape(10.dp),
@@ -219,18 +283,18 @@ fun SeiriApp() {
                         .padding(14.dp)
                         .clickable {
                             scope.launch { drawerState.close() }
-                            showRoleSwitcherDialog = true
+                            AuthRepository.logout()
                         }
                 ) {
                     Row(
                         modifier = Modifier.padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.SwitchAccount, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(22.dp))
+                        Icon(Icons.Default.Logout, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(22.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
-                            Text("Ganti Peran Demonstrasi", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            Text("Admin ↔ 6 Mentor Area", fontSize = 10.sp, color = SecondarySlate)
+                            Text("Keluar", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text(currentUser.email, fontSize = 10.sp, color = SecondarySlate)
                         }
                     }
                 }
@@ -264,27 +328,13 @@ fun SeiriApp() {
                         }
                     },
                     actions = {
-                        // Quick Role Switch Button in Top Bar
-                        FilledTonalButton(
-                            onClick = { showRoleSwitcherDialog = true },
-                            shape = RoundedCornerShape(20.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            modifier = Modifier
-                                .padding(end = 8.dp)
-                                .testTag("top_bar_switch_role_button")
-                        ) {
-                            Icon(
-                                Icons.Default.SwitchAccount,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (currentUser.role == UserRole.ADMIN) "Admin" else currentUser.name.split(" ").first(),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        Text(
+                            text = currentUser.email,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontSize = 11.sp,
+                            color = SecondarySlate,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
@@ -325,13 +375,7 @@ fun SeiriApp() {
                         repository = repository
                     )
 
-                    Screen.MentorData -> MentorListScreen(
-                        repository = repository,
-                        onSwitchUser = { userId ->
-                            repository.switchDemoUser(userId)
-                            currentScreen = Screen.Dashboard
-                        }
-                    )
+                    Screen.MentorData -> MentorListScreen(repository = repository)
 
                     Screen.SpreadsheetImport -> SpreadsheetImportScreen(
                         repository = repository,
@@ -378,31 +422,21 @@ fun SeiriApp() {
 
                     Screen.MentorProfile -> MentorProfileScreen(
                         repository = repository,
-                        onOpenRoleDialog = { showRoleSwitcherDialog = true },
+                        onLogout = { AuthRepository.logout() },
                         onStartWizard = { currentScreen = Screen.MentoringWizard }
                     )
+
+                    Screen.GuestAreas -> GuestAreaBrowseScreen()
                 }
             }
         }
-    }
-
-    // Role Switcher Modal
-    if (showRoleSwitcherDialog) {
-        RoleSwitcherDialog(
-            currentUser = currentUser,
-            onSelectUser = { userId ->
-                repository.switchDemoUser(userId)
-                currentScreen = Screen.Dashboard
-            },
-            onDismiss = { showRoleSwitcherDialog = false }
-        )
     }
 }
 
 @Composable
 fun MentorProfileScreen(
     repository: SeiriRepository,
-    onOpenRoleDialog: () -> Unit,
+    onLogout: () -> Unit,
     onStartWizard: () -> Unit
 ) {
     val currentUser by repository.currentUser.collectAsState()
@@ -526,13 +560,13 @@ fun MentorProfileScreen(
                 }
 
                 OutlinedButton(
-                    onClick = onOpenRoleDialog,
+                    onClick = onLogout,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.SwitchAccount, contentDescription = null)
+                    Icon(Icons.Default.Logout, contentDescription = null)
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Ganti Akun Demonstrasi")
+                    Text("Keluar")
                 }
             }
         }

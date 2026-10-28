@@ -6,7 +6,7 @@ object SampleData {
     val adminUser = User(
         id = "usr_admin",
         name = "Hartono Kusuma",
-        username = "admin.hartono",
+        email = "admin.hartono@satoria.com",
         role = UserRole.ADMIN,
         department = "Komite 6S & Plant Management"
     )
@@ -15,7 +15,7 @@ object SampleData {
         User(
             id = "usr_m1",
             name = "Andi Pratama",
-            username = "mentor.andi",
+            email = "mentor.andi@satoria.com",
             role = UserRole.MENTOR,
             assignedAreaId = "area_prf",
             department = "Divisi Produksi Preform"
@@ -23,7 +23,7 @@ object SampleData {
         User(
             id = "usr_m2",
             name = "Budi Santoso",
-            username = "mentor.budi",
+            email = "mentor.budi@satoria.com",
             role = UserRole.MENTOR,
             assignedAreaId = "area_blw",
             department = "Divisi Blowing & Mold"
@@ -31,7 +31,7 @@ object SampleData {
         User(
             id = "usr_m3",
             name = "Citra Dewi",
-            username = "mentor.citra",
+            email = "mentor.citra@satoria.com",
             role = UserRole.MENTOR,
             assignedAreaId = "area_qc",
             department = "Quality Control"
@@ -39,7 +39,7 @@ object SampleData {
         User(
             id = "usr_m4",
             name = "Doni Wijaya",
-            username = "mentor.doni",
+            email = "mentor.doni@satoria.com",
             role = UserRole.MENTOR,
             assignedAreaId = "area_wh",
             department = "Warehouse & Logistik"
@@ -47,7 +47,7 @@ object SampleData {
         User(
             id = "usr_m5",
             name = "Eko Prasetyo",
-            username = "mentor.eko",
+            email = "mentor.eko@satoria.com",
             role = UserRole.MENTOR,
             assignedAreaId = "area_pck",
             department = "Divisi Packing & Palletizing"
@@ -55,7 +55,7 @@ object SampleData {
         User(
             id = "usr_m6",
             name = "Fani Rahma",
-            username = "mentor.fani",
+            email = "mentor.fani@satoria.com",
             role = UserRole.MENTOR,
             assignedAreaId = "area_mc",
             department = "Machining & Tool Crib"

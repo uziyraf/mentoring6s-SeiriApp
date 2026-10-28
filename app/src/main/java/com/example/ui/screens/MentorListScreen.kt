@@ -24,8 +24,7 @@ import com.example.ui.theme.*
 
 @Composable
 fun MentorListScreen(
-    repository: SeiriRepository,
-    onSwitchUser: (String) -> Unit
+    repository: SeiriRepository
 ) {
     val currentUser by repository.currentUser.collectAsState()
     val objects by repository.objects.collectAsState()
@@ -120,7 +119,7 @@ fun MentorListScreen(
                                     }
                                 }
                                 Text(
-                                    text = "${mentor.department} • @${mentor.username}",
+                                    text = "${mentor.department} �?� ${mentor.email}",
                                     fontSize = 11.sp,
                                     color = SecondarySlate
                                 )
@@ -151,17 +150,11 @@ fun MentorListScreen(
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))
-                        if (!isCurrentlyActive) {
-                            OutlinedButton(
-                                onClick = { onSwitchUser(mentor.id) },
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.SwitchAccount, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Simulasikan Login sebagai ${mentor.name.split(" ").first()}", fontSize = 12.sp)
-                            }
-                        }
+                        Text(
+                            text = if (isCurrentlyActive) "Akun Anda saat ini" else "Akun mentor terdaftar",
+                            fontSize = 11.sp,
+                            color = SecondarySlate
+                        )
                     }
                 }
             }

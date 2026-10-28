@@ -1,3 +1,15 @@
 <resources>
     <string name="app_name">Seiri 6S</string>
+    <string name="google_web_client_id">964304974711-g259r59p8oavp2tesatr84b8j7ls0i7s.apps.googleusercontent.com</string>
+    <string name="default_web_client_id">964304974711-g259r59p8oavp2tesatr84b8j7ls0i7s.apps.googleusercontent.com</string>
+    <string name="google_sign_in_not_configured">Google Sign-In belum dikonfigurasi. Hubungi admin IT.</string>
+    <string name="button_register">Daftar</string>
+    <string name="button_login">Masuk</string>
+    <string name="button_google">Masuk dengan Google</string>
+    <string name="label_name">Nama Lengkap</string>
+    <string name="label_email">Email</string>
+    <string name="label_password">Password</string>
+    <string name="label_confirm_password">Konfirmasi Password</string>
+    <string name="hint_have_account">Sudah punya akun?</string>
+    <string name="hint_no_account">Belum punya akun?</string>
 </resources>

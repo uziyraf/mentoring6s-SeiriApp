@@ -21,8 +21,21 @@ class SeiriRepository private constructor() {
     private val _syncError = MutableStateFlow<String?>(null)
     val syncError: StateFlow<String?> = _syncError.asStateFlow()
 
-    private val _currentUser = MutableStateFlow<User>(SampleData.adminUser)
+    private val _currentUser = MutableStateFlow<User>(
+        User(
+            id = "guest_local",
+            name = "Tamu (Guest)",
+            email = "guest@seiri.local",
+            role = UserRole.GUEST,
+            assignedAreaId = null,
+            department = "Visitor"
+        )
+    )
     val currentUser: StateFlow<User> = _currentUser.asStateFlow()
+
+    fun setCurrentUser(user: User) {
+        _currentUser.value = user
+    }
 
     val areas get() = AreaRepository.areas
     val zones get() = AreaRepository.zones

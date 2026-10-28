@@ -2,17 +2,17 @@ package com.example.model
 
 enum class UserRole(val label: String) {
     ADMIN("Administrator"),
-    MENTOR("Mentor 6S")
+    MENTOR("Mentor 6S"), // Selama ini dikenal sebagai User CI
+    GUEST("Tamu")
 }
 
 data class User(
     val id: String,
     val name: String,
-    val username: String,
+    val email: String = "", 
     val role: UserRole,
     val assignedAreaId: String? = null,
-    val department: String = "Manufaktur",
-    val isActive: Boolean = true
+    val department: String = ""
 )
 
 // Hirarki: GROUP -> AREA -> ZONE -> OBJECT
