@@ -26,6 +26,18 @@ data class MentoringReport(
     val createdAt: String = ""
 )
 
+data class AreaMentoringGroup(
+    val areaId: String,
+    val areaName: String,
+    val zoneId: String,
+    val zoneName: String,
+    val reports: List<MentoringReport>
+) {
+    val lastVisited: String get() = reports.maxByOrNull { it.createdAt }?.createdAt ?: "-"
+    val totalVisits: Int get() = reports.size
+}
+
+
 object MentoringReportRepository {
     private val firestore: FirebaseFirestore? by lazy {
         try {
