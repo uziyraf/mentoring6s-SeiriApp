@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow // 🔴 IMPORT INI YANG TADI HILANG
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.AreaMentoringGroup
@@ -46,14 +47,39 @@ fun HistoryMentoringReport(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text("Riwayat Area Mentoring", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("${groupedAreas.size} Area Terdata", style = MaterialTheme.typography.labelSmall, color = SecondarySlate)
+            // 🔴 Teks diberi weight agar tidak bertabrakan dengan tombol
+            Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                Text(
+                    text = "Riwayat Area Mentoring", 
+                    style = MaterialTheme.typography.titleMedium, 
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${groupedAreas.size} Area Terdata", 
+                    style = MaterialTheme.typography.labelSmall, 
+                    color = SecondarySlate
+                )
             }
-            FilledTonalButton(onClick = onCreateNewForArea) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+            
+            // 🔴 Tombol diperkecil padding dan tingginya
+            FilledTonalButton(
+                onClick = onCreateNewForArea,
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                modifier = Modifier.height(36.dp)
+            ) {
+                Icon(
+                    Icons.Default.Add, 
+                    contentDescription = null, 
+                    modifier = Modifier.size(16.dp)
+                )
                 Spacer(Modifier.width(4.dp))
-                Text("Kunjungan Baru")
+                Text(
+                    "Kunjungan Baru", 
+                    fontSize = 12.sp, 
+                    maxLines = 1
+                )
             }
         }
 
@@ -68,13 +94,34 @@ fun HistoryMentoringReport(
                 items(groupedAreas, key = { it.areaId + it.zoneId }) { group ->
                     Card(
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().clickable { onOpenTimeline(group) }
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenTimeline(group) }
                     ) {
                         Column(Modifier.padding(16.dp)) {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(group.areaName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Surface(color = PrimaryBlueContainer, shape = RoundedCornerShape(6.dp)) {
-                                    Text("${group.totalVisits} Kunjungan", fontSize = 10.sp, color = PrimaryBlueDark, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            Row(
+                                Modifier.fillMaxWidth(), 
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    group.areaName, 
+                                    style = MaterialTheme.typography.titleMedium, 
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Surface(
+                                    color = PrimaryBlueContainer, 
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        "${group.totalVisits} Kunjungan", 
+                                        fontSize = 10.sp, 
+                                        color = PrimaryBlueDark, 
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
                                 }
                             }
                             Text(group.zoneName, style = MaterialTheme.typography.bodySmall, color = PrimaryBlue)
