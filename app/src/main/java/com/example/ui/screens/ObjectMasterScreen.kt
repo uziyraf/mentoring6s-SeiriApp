@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.SeiriRepository
+import com.example.ui.components.ObjectPhoto
 import com.example.model.*
 import com.example.ui.components.*
 import com.example.ui.theme.*
@@ -459,6 +460,14 @@ private fun ObjectCardItem(
             .testTag("object_card_${obj.objectCode}")
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
+            if (!obj.photoUrl.isNullOrBlank()) {
+                ObjectPhoto(
+                    photoUrl = obj.photoUrl,
+                    modifier = Modifier.fillMaxWidth().height(120.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             // Header Row: Code + Status Badge + Active Indicator
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -617,6 +626,14 @@ private fun ObjectDetailModal(
         },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                if (!obj.photoUrl.isNullOrBlank()) {
+                    ObjectPhoto(
+                        photoUrl = obj.photoUrl,
+                        modifier = Modifier.fillMaxWidth().height(200.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
                 Text(
                     text = "DATA MASTER ASET",
                     fontSize = 11.sp,

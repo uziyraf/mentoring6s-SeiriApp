@@ -70,12 +70,6 @@ class SeiriRepository private constructor() {
         MentoringReportRepository.initSync()
     }
 
-    // Demo Role Switcher
-    fun switchDemoUser(userId: String) {
-        val user = SampleData.allUsers.find { it.id == userId } ?: return
-        _currentUser.value = user
-    }
-
     // Permission checks (delegated to ObjectRepository)
     fun canManageObject(targetObject: SeiriObject, user: User = _currentUser.value): Boolean =
         ObjectRepository.canManageObject(targetObject, user)

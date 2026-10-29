@@ -40,9 +40,11 @@ import com.example.ui.theme.PrimaryBlueDark
 import com.example.ui.theme.SecondarySlate
 import com.example.ui.theme.SecondarySlateLight
 import com.example.ui.theme.SeiriTheme
+import com.example.ui.theme.StatusAmber
 import com.example.ui.theme.StatusGreen
 import kotlinx.coroutines.launch
 import com.example.data.repository.AuthRepository
+import androidx.compose.ui.text.style.TextAlign
 
 
 
@@ -64,9 +66,14 @@ sealed class Screen(val title: String, val icon: ImageVector) {
     object MentorProfile : Screen("Akun", Icons.Default.AccountCircle)
 }
 
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // 1. Inisialisasi dipanggil di sini (SEBELUM setContent)
+        AuthRepository.initialize(applicationContext)
+        
         enableEdgeToEdge()
         setContent {
             SeiriTheme {
@@ -80,6 +87,7 @@ class MainActivity : ComponentActivity() {
                     val isInitializing by AuthRepository.isInitializing.collectAsState()
                     var syncedUserId by remember { mutableStateOf<String?>(null) }
 
+                    // 2. Sinkronisasi user login ke SeiriRepository
                     LaunchedEffect(authUser?.id) {
                         authUser?.let {
                             SeiriRepository.instance.setCurrentUser(it)
@@ -89,26 +97,20 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    // 3. Routing UI
                     if (isInitializing) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            Text(
-                                text = "Memuat sesi...",
-                                color = SecondarySlate,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(text = "Memuat sesi...", color = SecondarySlate)
                         }
                     } else if (authUser == null) {
-                        // Belum Login
                         when (authScreen) {
                             "WELCOME" -> WelcomeScreen(
                                 onNavigateToLogin = { authScreen = "LOGIN" },
                                 onNavigateToRegister = { authScreen = "REGISTER" },
-                                onLoginAsGuest = {
-                                    // loginAsGuest() dipanggil di WelcomeScreen
-                                }
+                                onLoginAsGuest = { /* Dibiarkan kosong karena sudah dihandle WelcomeScreen */ }
                             )
                             "LOGIN" -> LoginScreen(
-                                onLoginSuccess = {},
+                                onLoginSuccess = { /* StateFlow akan otomatis mengubah UI */ },
                                 onNavigateToRegister = { authScreen = "REGISTER" }
                             )
                             "REGISTER" -> RegisterScreen(
@@ -116,15 +118,10 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     } else if (syncedUserId != authUser?.id) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            Text(
-                                text = "Menyiapkan akun...",
-                                color = SecondarySlate,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(text = "Menyiapkan akun...", color = SecondarySlate)
                         }
                     } else {
-                        // Sudah Login (Admin, Mentor, atau Guest)
                         SeiriApp()
                     }
                 }
@@ -138,6 +135,12 @@ class MainActivity : ComponentActivity() {
 fun SeiriApp() {
     val repository = remember { SeiriRepository.instance }
     val currentUser by repository.currentUser.collectAsState()
+
+    if (currentUser.role == UserRole.MENTOR && currentUser.assignedAreaId == null) {
+        MentorPendingAssignmentScreen(repository)
+        return
+    }
+
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -148,11 +151,19 @@ fun SeiriApp() {
         MentoringReportRepository.initSync()
     }
 
-    var currentScreen by remember { mutableStateOf<Screen>(Screen.Dashboard) }
+    val defaultScreen = when (currentUser.role) {
+        UserRole.GUEST -> Screen.GuestAreas
+        else -> Screen.Dashboard
+    }
+    var currentScreen by remember { mutableStateOf<Screen>(defaultScreen) }
     var preselectedTransferObjectId by remember { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(currentUser.role) {
+        currentScreen = defaultScreen
+    }
+
     // Predictive Back Handling
-    BackHandler(enabled = currentScreen != Screen.Dashboard || drawerState.isOpen) {
+    BackHandler(enabled = drawerState.isOpen || (currentUser.role != UserRole.GUEST && currentScreen != Screen.Dashboard)) {
         if (drawerState.isOpen) {
             scope.launch { drawerState.close() }
         } else {
@@ -189,10 +200,21 @@ fun SeiriApp() {
         Screen.GuestAreas
     )
 
+    val effectiveMentorNavItems = if (currentUser.role == UserRole.MENTOR && currentUser.assignedAreaId == null) {
+        mentorNavItems.filter { it != Screen.MentoringWizard }
+    } else {
+        mentorNavItems
+    }
     val currentNavItems = when (currentUser.role) {
         UserRole.ADMIN -> adminNavItems
-        UserRole.MENTOR -> mentorNavItems
+        UserRole.MENTOR -> effectiveMentorNavItems
         UserRole.GUEST -> guestNavItems
+    }
+
+    LaunchedEffect(currentScreen, currentNavItems) {
+        if (!currentNavItems.contains(currentScreen)) {
+            currentScreen = defaultScreen
+        }
     }
 
     ModalNavigationDrawer(
@@ -567,6 +589,65 @@ fun MentorProfileScreen(
                     Icon(Icons.Default.Logout, contentDescription = null)
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Keluar")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MentorPendingAssignmentScreen(repository: SeiriRepository) {
+    val currentUser by repository.currentUser.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+        ) {
+            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Default.Assignment,
+                    contentDescription = null,
+                    tint = StatusAmber,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Akun Menunggu Penugasan Area",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = IndustrialNavy
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Halo, ${currentUser.name}. Akun Anda sudah aktif sebagai Mentor 6S, tetapi area binaan belum ditentukan oleh admin.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = SecondarySlate,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                Text(
+                    text = "Silakan hubungi admin IT untuk menetapkan area binaan. Setelah area ditetapkan, Anda bisa mulai sesi mentoring.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SecondarySlateLight,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+                OutlinedButton(
+                    onClick = { AuthRepository.logout() },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryBlueDark)
+                ) {
+                    Text("Keluar", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
             }
         }

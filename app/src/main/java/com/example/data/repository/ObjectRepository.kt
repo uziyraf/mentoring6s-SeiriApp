@@ -78,6 +78,17 @@ object ObjectRepository {
                         val lastUsed = FirestoreMapper.safeString(doc, "lastUsedDate", "last_used_date") ?: DateUtils.currentDate()
                         val createdAt = FirestoreMapper.safeString(doc, "created_at", "createdAt") ?: DateUtils.currentDate()
                         val updatedAt = FirestoreMapper.safeString(doc, "updated_at", "updatedAt") ?: DateUtils.currentDate()
+                        val photoUrl = FirestoreMapper.safeString(
+                            doc,
+                            "photoUrl",
+                            "photo_url",
+                            "imageUrl",
+                            "image_url",
+                            "fotoUrl",
+                            "foto_url",
+                            "photo",
+                            "image"
+                        )
 
                         SeiriObject(
                             id = id,
@@ -97,9 +108,10 @@ object ObjectRepository {
                             isActive = isActive,
                             version = FirestoreMapper.safeInt(doc, "version", default = 1),
                             createdBy = FirestoreMapper.safeString(doc, "createdBy", "created_by") ?: "System",
-                            updatedBy = FirestoreMapper.safeString(doc, "updatedBy", "updated_by") ?: "System",
+                            updatedBy = FirestoreMapper.safeString(doc, "updated_by", "updated_by") ?: "System",
                             createdAt = createdAt,
-                            updatedAt = updatedAt
+                            updatedAt = updatedAt,
+                            photoUrl = photoUrl
                         )
                     } catch (e: Exception) {
                         Log.e("ObjectRepository", "Error parsing object doc ${doc.id}: ${e.message}", e)

@@ -19,6 +19,7 @@ import com.example.ui.theme.*
 fun GuestAreaBrowseScreen() {
     val repository = remember { SeiriRepository.instance }
     val areas by repository.areas.collectAsState()
+    val syncError by repository.syncError.collectAsState()
 
     Column(
         modifier = Modifier
@@ -39,6 +40,15 @@ fun GuestAreaBrowseScreen() {
             color = SecondarySlate,
             modifier = Modifier.padding(bottom = 16.dp)
         )
+
+        if (syncError != null) {
+            Text(
+                text = "Gagal sinkronisasi area dari server (${syncError}). Menampilkan data lokal.",
+                style = MaterialTheme.typography.bodySmall,
+                color = StatusAmber,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+        }
 
         if (areas.isEmpty()) {
             Text(text = "Belum ada data area.", color = SecondarySlate)

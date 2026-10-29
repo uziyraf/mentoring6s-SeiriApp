@@ -44,6 +44,9 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    
+    // State untuk Dialog Lupa Password
+    var showForgotPasswordDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -136,7 +139,19 @@ fun LoginScreen(
                     enabled = !isLoading
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                // 🔴 TAMBAHAN: Teks Lupa Password
+                Text(
+                    text = "Lupa Password?",
+                    color = PrimaryBlue,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(top = 6.dp, end = 4.dp)
+                        .clickable { showForgotPasswordDialog = true }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Tombol Login
                 Button(
@@ -172,92 +187,75 @@ fun LoginScreen(
             }
         }
 
-                Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-                // Divider "ATAU"
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = OutlineLight)
-                    Text(
-                        text = " ATAU ",
-                        color = SecondarySlate,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = OutlineLight)
-                }
+        // Divider "ATAU"
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HorizontalDivider(modifier = Modifier.weight(1f), color = OutlineLight)
+            Text(
+                text = " ATAU ",
+                color = SecondarySlate,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+            HorizontalDivider(modifier = Modifier.weight(1f), color = OutlineLight)
+        }
 
-                Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-                // Tombol Google
-                Button(
-                    onClick = {
-                        scope.launch {
-                            val tokenResult = GoogleSignInHelper.getIdToken(context, googleWebClientId)
-                            if (tokenResult.isFailure) {
-                                errorMessage = tokenResult.exceptionOrNull()?.message ?: "Login dengan Google gagal."
-                                return@launch
-                            }
-                            val idToken = tokenResult.getOrThrow()
-                            val result = AuthRepository.signInWithGoogle(idToken)
-                            if (result.isSuccess) {
-                                onLoginSuccess()
-                            } else {
-                                errorMessage = result.exceptionOrNull()?.message ?: "Login dengan Google gagal."
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryBlueDark),
-                    enabled = !isLoading
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            color = PrimaryBlueDark,
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
-                        )
+        // Tombol Google
+        Button(
+            onClick = {
+                scope.launch {
+                    val tokenResult = GoogleSignInHelper.getIdToken(context, googleWebClientId)
+                    if (tokenResult.isFailure) {
+                        errorMessage = tokenResult.exceptionOrNull()?.message ?: "Login dengan Google gagal."
+                        return@launch
+                    }
+                    val idToken = tokenResult.getOrThrow()
+                    val result = AuthRepository.signInWithGoogle(idToken)
+                    if (result.isSuccess) {
+                        onLoginSuccess()
                     } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = SecondarySlate,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Masuk dengan Google", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        }
+                        errorMessage = result.exceptionOrNull()?.message ?: "Login dengan Google gagal."
                     }
                 }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Divider "ATAU"
+            },
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryBlueDark),
+            enabled = !isLoading
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    color = PrimaryBlueDark,
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = OutlineLight)
-                    Text(
-                        text = " ATAU ",
-                        color = SecondarySlate,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp)
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = SecondarySlate,
+                        modifier = Modifier.size(20.dp)
                     )
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = OutlineLight)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Masuk dengan Google", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
+            }
+        }
 
-                Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-                // Tombol Guest
+        // Tombol Guest
         OutlinedButton(
             onClick = {
                 AuthRepository.loginAsGuest()
@@ -291,4 +289,75 @@ fun LoginScreen(
         )
     }
 
+    // 🔴 TAMBAHAN: Dialog Lupa Password
+    if (showForgotPasswordDialog) {
+        var resetEmail by remember { mutableStateOf(email) } // Otomatis isi email jika sudah diketik di form
+        var isSending by remember { mutableStateOf(false) }
+        var resetMessage by remember { mutableStateOf<String?>(null) }
+        var isSuccess by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = { if (!isSending) showForgotPasswordDialog = false },
+            title = { Text("Reset Password", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text("Masukkan email yang terdaftar. Kami akan mengirimkan tautan untuk mengatur ulang password Anda.", fontSize = 13.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = resetEmail,
+                        onValueChange = { resetEmail = it; resetMessage = null },
+                        label = { Text("Email") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSending && !isSuccess
+                    )
+                    
+                    if (resetMessage != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = resetMessage!!,
+                            color = if (isSuccess) StatusGreen else StatusRed,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (resetEmail.isBlank()) {
+                            resetMessage = "Email tidak boleh kosong."
+                            return@Button
+                        }
+                        scope.launch {
+                            isSending = true
+                            val result = AuthRepository.sendPasswordResetEmail(resetEmail)
+                            isSending = false
+                            if (result.isSuccess) {
+                                isSuccess = true
+                                resetMessage = "Email reset password telah dikirim. Silakan cek inbox/spam Anda."
+                            } else {
+                                resetMessage = result.exceptionOrNull()?.message ?: "Gagal mengirim email."
+                            }
+                        }
+                    },
+                    enabled = !isSending && !isSuccess
+                ) {
+                    if (isSending) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                    } else {
+                        Text(if (isSuccess) "Tutup" else "Kirim")
+                    }
+                }
+            },
+            dismissButton = {
+                if (!isSuccess) {
+                    TextButton(onClick = { showForgotPasswordDialog = false }, enabled = !isSending) {
+                        Text("Batal")
+                    }
+                }
+            }
+        )
+    }
 }
