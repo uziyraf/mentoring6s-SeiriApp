@@ -1,5 +1,6 @@
 package com.example.ui.screens.MentoringReport
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,23 +11,34 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.model.MentoringReport
+import androidx.compose.ui.unit.sp
+import com.example.model.AreaMentoringGroup
 import com.example.model.MentoringReportRepository
 import com.example.ui.theme.*
 
-/**
- * Histori laporan mentoring: list + aksi hapus.
- * Logic & UI histori sengaja ditaruh di sini, dipanggil dari MentoringReportScreen.
- */
 @Composable
 fun HistoryMentoringReport(
-    onCreate: () -> Unit,
-    onEdit: (MentoringReport) -> Unit
+    onCreateNewForArea: () -> Unit,
+    onOpenTimeline: (AreaMentoringGroup) -> Unit
 ) {
     val reports by MentoringReportRepository.reports.collectAsState()
-    var pendingDelete by remember { mutableStateOf<MentoringReport?>(null) }
+
+    // Mengelompokkan laporan berdasarkan Area + Zona
+    val groupedAreas = remember(reports) {
+        reports.groupBy { "${it.areaId}|${it.zoneId}" }
+            .map { (_, list) ->
+                val first = list.first()
+                AreaMentoringGroup(
+                    areaId = first.areaId,
+                    areaName = first.areaName,
+                    zoneId = first.zoneId,
+                    zoneName = first.zoneName,
+                    reports = list.sortedByDescending { it.createdAt }
+                )
+            }.sortedByDescending { it.lastVisited }
+    }
 
     Column(Modifier.fillMaxSize().padding(12.dp)) {
         Row(
@@ -34,121 +46,44 @@ fun HistoryMentoringReport(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "Histori Laporan Mentoring",
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    "${reports.size} laporan",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = SecondarySlate
-                )
+            Column {
+                Text("Riwayat Area Mentoring", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("${groupedAreas.size} Area Terdata", style = MaterialTheme.typography.labelSmall, color = SecondarySlate)
             }
-            FilledTonalButton(onClick = onCreate) {
+            FilledTonalButton(onClick = onCreateNewForArea) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
-                Text("Baru", style = MaterialTheme.typography.labelLarge)
+                Text("Kunjungan Baru")
             }
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
 
-        if (reports.isEmpty()) {
+        if (groupedAreas.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Default.Assignment,
-                        contentDescription = null,
-                        tint = SecondarySlateLight,
-                        modifier = Modifier.size(40.dp)
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "Belum ada laporan.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = SecondarySlate
-                    )
-                }
+                Text("Belum ada area yang pernah dikunjungi.", color = SecondarySlate)
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(reports, key = { it.id }) { report ->
-                    Card(shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
-                        Column(
-                            Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(report.mentorName, style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                "${report.plant} > ${report.areaName} > ${report.zoneName}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = PrimaryBlueDark
-                            )
-                            Text(
-                                "PIC: ${report.pic}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = SecondarySlate
-                            )
-                            Text(
-                                "Audiens: ${report.audience}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = SecondarySlate
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(report.activityDescription, style = MaterialTheme.typography.bodyMedium)
-                            Text("Hasil: ${report.result}", style = MaterialTheme.typography.bodyMedium)
-                            Text("Kendala: ${report.obstacles}", style = MaterialTheme.typography.bodyMedium)
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                report.createdAt,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = SecondarySlateLight
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                TextButton(onClick = { onEdit(report) }) {
-                                    Text("Edit", style = MaterialTheme.typography.labelMedium)
-                                }
-                                TextButton(onClick = { pendingDelete = report }) {
-                                    Text(
-                                        "Hapus",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = StatusRed
-                                    )
+                items(groupedAreas, key = { it.areaId + it.zoneId }) { group ->
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().clickable { onOpenTimeline(group) }
+                    ) {
+                        Column(Modifier.padding(16.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(group.areaName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Surface(color = PrimaryBlueContainer, shape = RoundedCornerShape(6.dp)) {
+                                    Text("${group.totalVisits} Kunjungan", fontSize = 10.sp, color = PrimaryBlueDark, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                 }
                             }
+                            Text(group.zoneName, style = MaterialTheme.typography.bodySmall, color = PrimaryBlue)
+                            Spacer(Modifier.height(8.dp))
+                            Text("Kunjungan Terakhir: ${group.lastVisited}", fontSize = 11.sp, color = SecondarySlate)
                         }
                     }
                 }
             }
         }
-    }
-
-    pendingDelete?.let { target ->
-        AlertDialog(
-            onDismissRequest = { pendingDelete = null },
-            title = { Text("Hapus Laporan?", style = MaterialTheme.typography.titleMedium) },
-            text = {
-                Text(
-                    "Laporan ${target.mentorName} (${target.createdAt}) akan dihapus permanen.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    MentoringReportRepository.deleteReport(target.id)
-                    pendingDelete = null
-                }) {
-                    Text("Hapus", style = MaterialTheme.typography.labelLarge, color = StatusRed)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) {
-                    Text("Batal", style = MaterialTheme.typography.labelLarge)
-                }
-            }
-        )
     }
 }
