@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Guest tanpa login hanya boleh membaca data referensi area.
+    match /master_groups/{doc=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /master_areas/{doc=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /master_zones/{doc=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Profil pengguna: hanya pemilik sendiri. Akun baru dibuat sebagai MENTOR tanpa area.
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.role == 'MENTOR'
+        && request.resource.data.assignedAreaId == null;
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.assignedAreaId == resource.data.assignedAreaId;
+      allow delete: if false;
+    }
+
+    // Koleksi operasional lainnya memerlukan autentikasi.
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

@@ -1,5 +1,7 @@
 package com.example.ui.components
 
+import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,11 +16,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
+import coil.request.ImageRequest
 import com.example.data.SampleData
 import com.example.model.*
 import com.example.ui.theme.*
@@ -142,6 +149,79 @@ fun ConditionBadge(condition: ObjectCondition, modifier: Modifier = Modifier) {
 }
 
 @Composable
+fun ObjectPhoto(
+    photoUrl: String?,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null
+) {
+    val url = photoUrl?.trim()?.takeIf { it.isNotEmpty() }
+    val context = LocalContext.current
+
+    if (url == null) {
+        // Placeholder jika URL kosong (null)
+        Box(
+            modifier = modifier.background(SurfaceVariantLight),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Image,
+                contentDescription = null,
+                tint = SecondarySlate,
+                modifier = Modifier.size(32.dp)
+            )
+        }
+    } else {
+        // Menggunakan SubcomposeAsyncImage untuk menghindari bug loading pada rememberAsyncImagePainter
+        SubcomposeAsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(url)
+                // User-Agent membantu mem-bypass beberapa pemblokiran Google Drive
+                .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                .crossfade(true)
+                .build(),
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Crop,
+            modifier = modifier,
+            loading = {
+                // Tampilan saat gambar sedang diunduh
+                Box(
+                    Modifier.fillMaxSize().background(SurfaceVariantLight),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                        color = PrimaryBlue
+                    )
+                }
+            },
+            error = { state ->
+                // Tampilan jika gambar gagal dimuat (akan muncul di Logcat)
+                Log.e("ObjectPhoto", "Gagal memuat gambar: $url", state.result.throwable)
+                Box(
+                    Modifier.fillMaxSize().background(SurfaceVariantLight),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.BrokenImage,
+                            contentDescription = "Error",
+                            tint = StatusRed,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text("Gagal", fontSize = 10.sp, color = StatusRed)
+                    }
+                }
+            },
+            success = {
+                // Menggambar gambar yang berhasil diunduh
+                SubcomposeAsyncImageContent()
+            }
+        )
+    }
+}
+
+@Composable
 fun StatCard(
     title: String,
     value: String,
@@ -199,148 +279,6 @@ fun StatCard(
                         color = SecondarySlateLight
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun RoleSwitcherDialog(
-    currentUser: User,
-    onSelectUser: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.SwitchAccount,
-                    contentDescription = null,
-                    tint = PrimaryBlue,
-                    modifier = Modifier.size(26.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
-                    Text(
-                        text = "Ganti Peran Demonstrasi",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Pilih akun Admin atau Mentor untuk simulasi hak akses",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = SecondarySlate
-                    )
-                }
-            }
-        },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "AKUN ADMINISTRATOR",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = PrimaryBlue,
-                    modifier = Modifier.padding(bottom = 6.dp)
-                )
-
-                UserRowItem(
-                    user = SampleData.adminUser,
-                    isSelected = currentUser.id == SampleData.adminUser.id,
-                    onClick = {
-                        onSelectUser(SampleData.adminUser.id)
-                        onDismiss()
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = "TIM 6 MENTOR 6S (PER AREA)",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = SecondarySlate,
-                    modifier = Modifier.padding(bottom = 6.dp)
-                )
-
-                SampleData.mentors.forEach { mentor ->
-                    UserRowItem(
-                        user = mentor,
-                        isSelected = currentUser.id == mentor.id,
-                        onClick = {
-                            onSelectUser(mentor.id)
-                            onDismiss()
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.testTag("close_role_dialog_button")
-            ) {
-                Text("Tutup")
-            }
-        }
-    )
-}
-
-@Composable
-private fun UserRowItem(
-    user: User,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = if (isSelected) PrimaryBlueContainer else SurfaceVariantLight,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .testTag("select_user_${user.id}")
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(if (user.role == UserRole.ADMIN) PrimaryBlue else SecondarySlate),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = user.name.take(2).uppercase(),
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(modifier = Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = user.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (isSelected) PrimaryBlueDark else MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "${user.role.label} • ${user.department}",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontSize = 11.sp,
-                    color = SecondarySlate
-                )
-            }
-            if (isSelected) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = "Aktif",
-                    tint = PrimaryBlue,
-                    modifier = Modifier.size(20.dp)
-                )
             }
         }
     }

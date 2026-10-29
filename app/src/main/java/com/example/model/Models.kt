@@ -92,7 +92,8 @@ data class SeiriObject(
     val createdBy: String = "System",
     val updatedBy: String = "System",
     val createdAt: String = "2026-10-01",
-    val updatedAt: String = "2026-10-18"
+    val updatedAt: String = "2026-10-18",
+    val photoUrl: String? = null
 )
 
 enum class SessionStatus(val label: String) {
