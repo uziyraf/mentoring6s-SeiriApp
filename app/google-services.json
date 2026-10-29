@@ -12,7 +12,12 @@
           "package_name": "com.satoria.audit6s"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "964304974711-g259r59p8oavp2tesatr84b8j7ls0i7s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBsOfjMgdKK5LALXpxijQ14OT0hmsa9veM"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "964304974711-g259r59p8oavp2tesatr84b8j7ls0i7s.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     },
@@ -31,7 +41,20 @@
           "package_name": "com.satoria.mentoring6s"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "964304974711-5upaeei4cdcshleleq96qdml8ode5ko6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.satoria.mentoring6s",
+            "certificate_hash": "04556219ebed23afd1891cf4c4a7efa709d9b02f"
+          }
+        },
+        {
+          "client_id": "964304974711-g259r59p8oavp2tesatr84b8j7ls0i7s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBsOfjMgdKK5LALXpxijQ14OT0hmsa9veM"
@@ -39,7 +62,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "964304974711-g259r59p8oavp2tesatr84b8j7ls0i7s.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
