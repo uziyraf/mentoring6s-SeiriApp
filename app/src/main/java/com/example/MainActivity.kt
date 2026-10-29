@@ -66,9 +66,14 @@ sealed class Screen(val title: String, val icon: ImageVector) {
     object MentorProfile : Screen("Akun", Icons.Default.AccountCircle)
 }
 
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // 1. Inisialisasi dipanggil di sini (SEBELUM setContent)
+        AuthRepository.initialize(applicationContext)
+        
         enableEdgeToEdge()
         setContent {
             SeiriTheme {
@@ -82,6 +87,7 @@ class MainActivity : ComponentActivity() {
                     val isInitializing by AuthRepository.isInitializing.collectAsState()
                     var syncedUserId by remember { mutableStateOf<String?>(null) }
 
+                    // 2. Sinkronisasi user login ke SeiriRepository
                     LaunchedEffect(authUser?.id) {
                         authUser?.let {
                             SeiriRepository.instance.setCurrentUser(it)
@@ -91,26 +97,20 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    // 3. Routing UI
                     if (isInitializing) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            Text(
-                                text = "Memuat sesi...",
-                                color = SecondarySlate,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(text = "Memuat sesi...", color = SecondarySlate)
                         }
                     } else if (authUser == null) {
-                        // Belum Login
                         when (authScreen) {
                             "WELCOME" -> WelcomeScreen(
                                 onNavigateToLogin = { authScreen = "LOGIN" },
                                 onNavigateToRegister = { authScreen = "REGISTER" },
-                                onLoginAsGuest = {
-                                    // loginAsGuest() dipanggil di WelcomeScreen
-                                }
+                                onLoginAsGuest = { /* Dibiarkan kosong karena sudah dihandle WelcomeScreen */ }
                             )
                             "LOGIN" -> LoginScreen(
-                                onLoginSuccess = {},
+                                onLoginSuccess = { /* StateFlow akan otomatis mengubah UI */ },
                                 onNavigateToRegister = { authScreen = "REGISTER" }
                             )
                             "REGISTER" -> RegisterScreen(
@@ -118,15 +118,10 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     } else if (syncedUserId != authUser?.id) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            Text(
-                                text = "Menyiapkan akun...",
-                                color = SecondarySlate,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(text = "Menyiapkan akun...", color = SecondarySlate)
                         }
                     } else {
-                        // Sudah Login (Admin, Mentor, atau Guest)
                         SeiriApp()
                     }
                 }

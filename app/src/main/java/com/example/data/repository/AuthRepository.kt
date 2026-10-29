@@ -1,20 +1,20 @@
 package com.example.data.repository
 
+import android.content.Context
 import android.util.Log
+import com.example.data.local.AuthSessionCache
 import com.example.model.User
 import com.example.model.UserRole
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
@@ -26,9 +26,6 @@ object AuthRepository {
         try { FirebaseFirestore.getInstance() } catch (e: Exception) { null }
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    // Null = belum login. Guest juga disimpan di sini, tetapi tanpa sesi Firebase.
     private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
 
@@ -38,30 +35,112 @@ object AuthRepository {
     private val _isInitializing = MutableStateFlow(true)
     val isInitializing: StateFlow<Boolean> = _isInitializing.asStateFlow()
 
-    init {
-        checkCurrentUser()
+    private var isInitialized = false
+
+    fun initialize(context: Context) {
+        if (isInitialized) return
+        AuthSessionCache.initialize(context)
+        
         auth?.addAuthStateListener { firebaseAuth ->
-            scope.launch {
-                val firebaseUser = firebaseAuth.currentUser
-                if (firebaseUser == null) {
-                    _currentUser.value = null
-                } else {
-                    val profile = fetchOrCreateProfile(firebaseUser.uid, firebaseUser)
-                    _currentUser.value = profile
-                }
+            if (firebaseAuth.currentUser == null && !AuthSessionCache.isGuest()) {
+                _currentUser.value = null
+                AuthSessionCache.clearProfile()
             }
         }
+        checkCurrentUser()
+        isInitialized = true
     }
 
     private fun checkCurrentUser() {
-        scope.launch {
+        try {
+            if (AuthSessionCache.isGuest()) {
+                val guestUser = AuthSessionCache.loadProfile() ?: User(
+                    id = "guest_local", 
+                    name = "Tamu (Guest)", 
+                    email = "guest@seiri.local", 
+                    role = UserRole.GUEST, 
+                    department = "Visitor"
+                )
+                _currentUser.value = guestUser
+                _isInitializing.value = false
+                return
+            }
+
+            val cachedUser = AuthSessionCache.loadProfile()
+            if (cachedUser != null) {
+                _currentUser.value = cachedUser
+                _isInitializing.value = false
+            }
+
             val firebaseUser = auth?.currentUser
-            _currentUser.value = if (firebaseUser == null) null else fetchOrCreateProfile(firebaseUser.uid, firebaseUser)
+            if (firebaseUser != null) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    val freshUser = fetchProfile(firebaseUser.uid)
+                    if (freshUser != null) {
+                        _currentUser.value = freshUser
+                        AuthSessionCache.saveProfile(freshUser)
+                    }
+                    if (cachedUser == null) _isInitializing.value = false
+                }
+            } else if (cachedUser == null) {
+                _currentUser.value = null
+                _isInitializing.value = false
+            }
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Error checkCurrentUser: ${e.message}")
             _isInitializing.value = false
         }
     }
 
-    /** Login email & password. */
+    private suspend fun fetchProfile(uid: String): User? {
+        return try {
+            val db = firestore ?: return null
+            val doc = db.collection("users").document(uid).get().await()
+            if (doc.exists()) {
+                val name = doc.getString("name") ?: "Unknown User"
+                val email = doc.getString("email") ?: ""
+                val roleStr = doc.getString("role") ?: "MENTOR"
+                val assignedAreaId = doc.getString("assignedAreaId")
+                val department = doc.getString("department") ?: "Produksi"
+
+                // 🔴 Perbaikan Mapping Role (USER_CI -> MENTOR)
+                val role = when (roleStr.uppercase()) {
+                    "ADMIN" -> UserRole.ADMIN
+                    "MENTOR", "USER_CI" -> UserRole.MENTOR
+                    "GUEST" -> UserRole.GUEST
+                    else -> UserRole.MENTOR
+                }
+
+                User(
+                    id = uid,
+                    name = name,
+                    email = email,
+                    role = role,
+                    assignedAreaId = assignedAreaId,
+                    department = department
+                )
+            } else null
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Error fetchProfile: ${e.message}")
+            null
+        }
+    }
+
+    private suspend fun fetchOrCreateProfile(uid: String, firebaseUser: FirebaseUser): User {
+        val existing = fetchProfile(uid)
+        if (existing != null) return existing
+        
+        val newUser = User(
+            id = uid,
+            name = firebaseUser.displayName ?: "User Baru",
+            email = firebaseUser.email ?: "",
+            role = UserRole.MENTOR, // Default Role
+            department = "Produksi"
+        )
+        firestore?.collection("users")?.document(uid)?.set(newUser)?.await()
+        return newUser
+    }
+
     suspend fun login(email: String, password: String): Result<User> {
         return withContext(Dispatchers.IO) {
             _isLoading.value = true
@@ -70,47 +149,52 @@ object AuthRepository {
                 val result = authInstance.signInWithEmailAndPassword(email, password).await()
                 val firebaseUser = result.user ?: throw Exception("User tidak ditemukan")
                 val user = fetchOrCreateProfile(firebaseUser.uid, firebaseUser)
+                
+                AuthSessionCache.saveProfile(user)
+                AuthSessionCache.setGuest(false)
+                
                 _isLoading.value = false
                 _currentUser.value = user
                 Result.success(user)
             } catch (e: Exception) {
                 _isLoading.value = false
-                Result.failure(mapLoginError(e))
+                Result.failure(Exception(mapLoginError(e)))
             }
         }
     }
 
-    /** Registrasi akun baru. Hanya role MENTOR yang dapat dibuat sendiri. */
+    // 🔴 Perbaikan Urutan Parameter Register (name, email, password)
     suspend fun register(name: String, email: String, password: String): Result<User> {
         return withContext(Dispatchers.IO) {
             _isLoading.value = true
             try {
                 val authInstance = auth ?: throw Exception("Firebase Auth belum siap")
                 val result = authInstance.createUserWithEmailAndPassword(email, password).await()
-                val firebaseUser = result.user ?: throw Exception("User tidak ditemukan")
-
-                try {
-                    firebaseUser.updateProfile(
-                        UserProfileChangeRequest.Builder()
-                            .setDisplayName(name.trim())
-                            .build()
-                    ).await()
-                } catch (e: Exception) {
-                    Log.w("AuthRepository", "Gagal update profil nama: ${e.message}")
-                }
-
-                val user = createProfileIfMissing(firebaseUser, name.trim(), email.trim(), UserRole.MENTOR, null, "")
+                val firebaseUser = result.user ?: throw Exception("Registrasi gagal")
+                
+                val user = User(
+                    id = firebaseUser.uid,
+                    name = name,
+                    email = email,
+                    role = UserRole.MENTOR, // Default Role
+                    department = "Produksi"
+                )
+                firestore?.collection("users")?.document(user.id)?.set(user)?.await()
+                
+                AuthSessionCache.saveProfile(user)
+                AuthSessionCache.setGuest(false)
+                
                 _isLoading.value = false
                 _currentUser.value = user
                 Result.success(user)
             } catch (e: Exception) {
                 _isLoading.value = false
-                Result.failure(mapRegisterError(e))
+                Result.failure(Exception(e.localizedMessage ?: "Registrasi gagal"))
             }
         }
     }
 
-    /** Login dengan token ID Google dari Credential Manager. */
+    // 🔴 Mengembalikan fungsi signInWithGoogle yang sempat terhapus
     suspend fun signInWithGoogle(idToken: String): Result<User> {
         return withContext(Dispatchers.IO) {
             _isLoading.value = true
@@ -118,20 +202,25 @@ object AuthRepository {
                 val authInstance = auth ?: throw Exception("Firebase Auth belum siap")
                 val credential = GoogleAuthProvider.getCredential(idToken, null)
                 val result = authInstance.signInWithCredential(credential).await()
-                val firebaseUser = result.user ?: throw Exception("User tidak ditemukan")
+                val firebaseUser = result.user ?: throw Exception("User Google tidak ditemukan")
+                
                 val user = fetchOrCreateProfile(firebaseUser.uid, firebaseUser)
+                
+                AuthSessionCache.saveProfile(user)
+                AuthSessionCache.setGuest(false)
+                
                 _isLoading.value = false
                 _currentUser.value = user
                 Result.success(user)
             } catch (e: Exception) {
                 _isLoading.value = false
-                Result.failure(mapLoginError(e))
+                Result.failure(Exception(mapLoginError(e)))
             }
         }
     }
 
     fun loginAsGuest() {
-        _currentUser.value = User(
+        val guestUser = User(
             id = "guest_local",
             name = "Tamu (Guest)",
             email = "guest@seiri.local",
@@ -139,126 +228,31 @@ object AuthRepository {
             assignedAreaId = null,
             department = "Visitor"
         )
+        _currentUser.value = guestUser
+        AuthSessionCache.saveProfile(guestUser)
+        AuthSessionCache.setGuest(true)
     }
 
     fun logout() {
         auth?.signOut()
         _currentUser.value = null
+        AuthSessionCache.clearProfile()
+        AuthSessionCache.setGuest(false)
     }
 
-    private suspend fun fetchOrCreateProfile(
-        uid: String,
-        firebaseUser: FirebaseUser
-    ): User {
-        val existing = fetchProfile(uid)
-        if (existing != null) return existing
-
-        val displayName = firebaseUser.displayName?.trim().takeIf { it?.isNotEmpty() == true }
-        val emailPart = firebaseUser.email
-        val name = if (displayName.isNullOrBlank()) {
-            if (emailPart == null || emailPart.isBlank()) "Pengguna Baru" else emailPart!!.substringBefore("@")
-        } else {
-            displayName
-        }
-        return createProfileIfMissing(
-            firebaseUser,
-            name,
-            firebaseUser.email ?: "",
-            UserRole.MENTOR,
-            null,
-            ""
-        )
+    private fun mapLoginError(e: Exception): String {
+        return e.localizedMessage ?: "Terjadi kesalahan sistem"
     }
-
-    private suspend fun createProfileIfMissing(
-        firebaseUser: FirebaseUser,
-        name: String,
-        email: String,
-        role: UserRole,
-        assignedAreaId: String?,
-        department: String
-    ): User {
-        val db = firestore
-        val data = mapOf(
-            "name" to name,
-            "email" to email,
-            "role" to role.name,
-            "assignedAreaId" to assignedAreaId,
-            "department" to department
-        )
-        if (db != null) {
-            try {
-                db.collection("users").document(firebaseUser.uid).set(data).await()
-            } catch (e: Exception) {
-                Log.e("AuthRepository", "Gagal simpan profil ke Firestore: ${e.message}")
-            }
-        }
-        return User(
-            id = firebaseUser.uid,
-            name = name,
-            email = email,
-            role = role,
-            assignedAreaId = assignedAreaId,
-            department = department
-        )
-    }
-
-    private suspend fun fetchProfile(uid: String): User? {
-        return try {
-            val db = firestore ?: return null
-            val doc = db.collection("users").document(uid).get().await()
-            if (!doc.exists()) return null
-
-            val name = doc.getString("name") ?: "Unknown User"
-            val email = doc.getString("email") ?: ""
-            val roleStr = doc.getString("role") ?: "MENTOR"
-            val assignedAreaId = doc.getString("assignedAreaId")
-            val department = doc.getString("department") ?: ""
-
-            val role = when (roleStr.uppercase()) {
-                "ADMIN" -> UserRole.ADMIN
-                "MENTOR", "USER_CI" -> UserRole.MENTOR
-                "GUEST" -> UserRole.GUEST
-                else -> UserRole.MENTOR
-            }
-
-            User(
-                id = uid,
-                name = name,
-                email = email,
-                role = role,
-                assignedAreaId = assignedAreaId,
-                department = department
-            )
+    
+    suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
+    return withContext(Dispatchers.IO) {
+        try {
+            val authInstance = auth ?: throw Exception("Firebase Auth belum siap")
+            authInstance.sendPasswordResetEmail(email).await()
+            Result.success(Unit)
         } catch (e: Exception) {
-            Log.e("AuthRepository", "Gagal ambil profil: ${e.message}")
-            null
+            Result.failure(Exception(mapLoginError(e)))
         }
     }
-
-    private fun mapLoginError(e: Exception): Exception {
-        val message = e.message ?: "Login gagal"
-        return Exception(when {
-            message.contains("INVALID_PASSWORD", ignoreCase = true) ||
-                message.contains("WRONG_PASSWORD", ignoreCase = true) -> "Email atau password salah."
-            message.contains("USER_NOT_FOUND", ignoreCase = true) ||
-                message.contains("EMAIL_NOT_FOUND", ignoreCase = true) -> "Email tidak terdaftar."
-            message.contains("INVALID_EMAIL", ignoreCase = true) -> "Format email tidak valid."
-            message.contains("TOO_MANY_REQUESTS", ignoreCase = true) -> "Terlalu banyak percobaan. Coba lagi nanti."
-            message.contains("NETWORK_REQUEST_FAILED", ignoreCase = true) -> "Tidak ada koneksi internet."
-            else -> message
-        })
-    }
-
-    private fun mapRegisterError(e: Exception): Exception {
-        val message = e.message ?: "Registrasi gagal"
-        return Exception(when {
-            message.contains("EMAIL_EXISTS", ignoreCase = true) ||
-                message.contains("ACCOUNT_EXISTS_WITH_DIFFERENT_CREDENTIAL", ignoreCase = true) -> "Email sudah digunakan."
-            message.contains("WEAK_PASSWORD", ignoreCase = true) -> "Password terlalu lemah. Minimal 6 karakter."
-            message.contains("INVALID_EMAIL", ignoreCase = true) -> "Format email tidak valid."
-            message.contains("NETWORK_REQUEST_FAILED", ignoreCase = true) -> "Tidak ada koneksi internet."
-            else -> message
-        })
-    }
+}
 }
